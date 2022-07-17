@@ -1,0 +1,41 @@
+[package]
+name = "test-utils"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+version = "0.1.0"
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow = { version = "1.0.57", features = ["backtrace"] }
+tokio = { version = "1.18.2", features = ["sync", "rt"] }
+tokio-util = { version = "0.7.2", features = ["codec"] }
+bytes = "1.1.0"
+futures = "0.3.21"
+async-trait = "0.1.53"
+rand = "0.7.3"
+rocksdb = "0.18.0"
+tracing = "0.1.34"
+tempfile = "3.3.0"
+bcs = "0.1.3"
+jsonrpsee-http-server = "0.13.1"
+jsonrpsee-http-client = "0.13.1"
+
+sui-adapter = { path = "../sui-adapter" }
+sui-framework = { path = "../sui-framework" }
+sui-gateway = { path = "../sui-gateway" }
+move-package = { git = "https://github.com/move-language/move", rev = "ae62d5f1955a9b92c3ddd31d3cc4467f9aff76ae" }
+move-core-types = { git = "https://github.com/move-language/move", rev = "ae62d5f1955a9b92c3ddd31d3cc4467f9aff76ae", features = ["address20"] }
+typed-store = { git = "https://github.com/MystenLabs/mysten-infra", rev ="af52637e73332eba7c8844e9bcdeb5b48854eabf"}
+narwhal-config = { git = "https://github.com/MystenLabs/narwhal", rev = "05fa85552c49f0775a47d72c37074c9ca1754900", package = "config" }
+
+sui-config = { path = "../sui-config" }
+sui-types = { path = "../sui-types" }
+sui-core = { path = "../sui-core" }
+sui-network = { path = "../sui-network" }
+sui-node = { path = "../sui-node" }
+sui-swarm = { path = "../sui-swarm" }
+sui = { path = "../sui" }
+sui-json-rpc = { path = "../sui-json-rpc" }
+sui-json-rpc-api = { path = "../sui-json-rpc-api" }
+workspace-hack = { path = "../workspace-hack"}
