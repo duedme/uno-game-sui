@@ -1,21 +1,21 @@
 module local::colors {
-    struct RGB has store, copy {
+    struct Color has store, copy, drop {
         configuration: vector<u8>
     }
 
-    public fun return_red(): RGB {
-        RGB { configuration: vector<u8>[1, 0, 0] }
+    public fun return_red(): Color {
+        Color { configuration: vector<u8>[1, 0, 0] }
     }
 
-    public fun return_blue(): RGB {
-        RGB { configuration: vector<u8>[0, 1, 0] }
+    public fun return_blue(): Color {
+        Color { configuration: vector<u8>[0, 1, 0] }
     }
 
-    public fun return_yellow(): RGB {
-        RGB { configuration: vector<u8>[1, 1, 0] }
+    public fun return_yellow(): Color {
+        Color { configuration: vector<u8>[1, 1, 0] }
     }
 
-    public fun return_green(): RGB {
-        RGB { configuration: vector<u8>[0, 1, 0] }
+    public fun return_green(): Color {
+        Color { configuration: vector<u8>[0, 1, 0] }
     }
 }
