@@ -3,12 +3,24 @@ module local::objects {
     use std::vector;
     use std::signer;
     use sui::id::{Self, ID};
-    //use sui::epoch_time_lock::{Self, EpochTimeLock};
+
+    const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
+
+    // NFT with unique id of the game linked with special Decks so that previous ones do not work
+    struct Game has key {
+        id: ID,
+        // TODO: make sure to stablish a number greater than 1
+        max_number_of_players: u8,
+    }
 
     struct Card has key, store, copy, drop {
         number: u8,
         color: Color,
         //special: bool,
+    }
+    
+    struct All_Players has key {
+        players: vector<address>
     }
 
     /*struct Plus has store { amount: u8 }
@@ -16,6 +28,11 @@ module local::objects {
     struct Block has store {}
     struct Change_Color_and_Plus has store { amount: Plus }
     struct Change_Color has store {}*/
+
+    public fun add_player(s: &signer) acquires All_Players {
+        let all_players = borrow_global_mut<All_Players>(signer::address_of(s));
+        vector::push_back(&mut all_players.players, signer::address_of(s));
+    }
 
     struct Deck has key {
         id: ID,
@@ -42,10 +59,18 @@ module local::objects {
 
     // ###Check it to make sure it works well.
     fun generate_random_cards(): Card { Card { number: 0, color: colors::return_red() }}
+
+    fun get_max_number_of_players(s: &signer): u8 acquires Game {
+        borrow_global_mut<Game>(signer::address_of(s)).max_number_of_players
+    }
     
     //gives problems
     public fun get_deck(s: &signer): &Deck acquires Deck {
         borrow_global<Deck>(signer::address_of(s))
+    }
+
+    public fun get_players(s: &signer): vector<address> acquires All_Players {
+        borrow_global<All_Players>(signer::address_of(s)).players
     }
 
     public fun unpack_deck_into_cards(self: &Deck): vector<Card> {
