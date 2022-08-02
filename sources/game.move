@@ -6,7 +6,8 @@ module local::game {
     use std::vector;
     use sui::event;
 
-    const EMAX_NUMBER_OF_PLAYERS_REACHED: u64 = 1;
+    const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
+    const EADMIN_WANTS_TO_LEAVE: u8 = 3;
 
     // Tells if player has checked wether it has a card to play in his round
     struct Status_Available_Cards {
@@ -22,13 +23,22 @@ module local::game {
 
     // Adds a new player
     fun enter_new_player(s: &signer) {
-        assert!(vector::length&objects::get_players(s)) < objects::get_max_number_of_players(s),
-            EMAX_NUMBER_OF_PLAYERS_REACHED);
+        assert!(vector::length(objects::get_players(s)) < objects::get_max_number_of_players(s),
+            (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
         objects::add_player(s);
     }
 
-    // Creates a new game with the current player
-    fun new_game() {}
+    // Starts a game with a defined number of players.
+    fun new_game(number_of_players: u8, s: &signer) {
+        objects::be_the_game_admin(s, number_of_players);
+        let starting_deck = objects::new_deck(s);
+        event::emit(starting_deck);
+    }
+
+    fun quit_game(s: &signer, _deck: Deck) {
+        assert!(!objects::is_admin(&signer::address_of(s)), (EADMIN_WANTS_TO_LEAVE as u64));
+        objects::leave_game(s);
+    }
 
     fun shout_UNO(s: &signer) {
         let deck = objects::get_deck(s);
