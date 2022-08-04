@@ -28,9 +28,11 @@ module local::game {
         objects::add_player(s);
     }
 
+    fun make_someone_an_admin(s: &signer)
+
     // Starts a game with a defined number of players.
     fun new_game(number_of_players: u8, s: &signer) {
-        objects::be_the_game_admin(s, number_of_players);
+        objects::be_the_game_admin_at_start(s, number_of_players);
         let starting_deck = objects::new_deck(s);
         event::emit(starting_deck);
     }

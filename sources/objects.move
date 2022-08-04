@@ -1,4 +1,6 @@
 module local::objects {
+    friend local::game;
+
     use local::colors::{Self, Color};
     use std::vector;
     use std::signer;
@@ -15,7 +17,12 @@ module local::objects {
         id: ID,
         max_number_of_players: u8,
         players: vector<address>,
-        moves: vector<vector<Card>>,
+        moves: vector<Playing_Moves>,
+    }
+
+    struct Playing_Moves has store, copy, drop {
+        player: address,
+        moves: vector<Card>,
     }
 
     struct Card has key, store, copy, drop {
@@ -37,42 +44,57 @@ module local::objects {
     struct Change_Color_and_Plus has store { amount: Plus }
     struct Change_Color has store {}*/
 
-    public fun be_the_game_admin(s: &signer, number_of_players: u8) {
+    public(friend) fun be_the_game_admin_at_start(s: &signer, number_of_players: u8) {
         assert!(number_of_players > 1, (EMIN_NUMBER_OF_PLAYERS_NOT_REACHED as u64));
         move_to(s, 
             Game {
                 id: object::id_from_address(signer::address_of(s)),
                 max_number_of_players: number_of_players,
                 players: vector::singleton<address>(signer::address_of(s)),
-                moves: vector::empty<vector<Card>>(),
+                moves: vector::singleton<Playing_Moves>(
+                    Playing_Moves {
+                        player: signer::address_of(s),
+                        moves: vector::empty<Card>(),
+                    }
+                ),
             }
         );
     }
 
-    public fun is_admin(addr: &address): bool {
+    fun give_administration() {
+
+    }
+
+    public(friend) fun is_admin(addr: &address): bool {
         exists<Game>(*addr)
     }
     
     // TODO: implement testing on this function.
     // TODO: it currently works only with the admin. Need to be implemented by the other
     // players too. Maybe whith the sharing atribute mentioned on line 12.
-    public fun leave_game(s: &signer) acquires Game {
+    public(friend) fun leave_game(s: &signer) acquires Game {
         let players = *get_players(s);
         let j: u64;
         
         (_, j) = vector::index_of(&players, &signer::address_of(s));
 
         vector::remove(&mut players, j);
-
     }
 
-    public fun add_player(s: &signer) acquires Game {
+    public(friend) fun add_player(s: &signer) acquires Game {
         let all_players = *get_players(s);
+        let new_moves = *get_moves(s);
         move_to(s, new_deck(s));
         vector::push_back(&mut all_players, signer::address_of(s));
+        vector::push_back(
+            &mut new_moves,
+            Playing_Moves{
+                player: signer::address_of(s),
+                moves: vector::empty<Card>(),
+            });
     }
 
-    public fun new_deck(s: &signer): Deck {
+    public(friend) fun new_deck(s: &signer): Deck {
         let i = 0u8;
 
         let deck = Deck {
@@ -91,12 +113,12 @@ module local::objects {
     // ###Check it to make sure it works well.
     fun generate_random_cards(): Card { Card { number: 0, color: colors::return_red() }}
 
-    public fun get_max_number_of_players(s: &signer): u64 acquires Game {
+    public(friend) fun get_max_number_of_players(s: &signer): u64 acquires Game {
         (borrow_global_mut<Game>(signer::address_of(s)).max_number_of_players as u64)
     }
     
     //gives problems
-    public fun get_deck(s: &signer): &Deck acquires Deck {
+    public(friend) fun get_deck(s: &signer): &Deck acquires Deck {
         borrow_global<Deck>(signer::address_of(s))
     }
 
@@ -112,27 +134,31 @@ module local::objects {
         borrow_global_mut<Game>(signer::address_of(s))
     }*/
 
-    public fun get_players(s: &signer): &vector<address> acquires Game {
+    public(friend) fun get_players(s: &signer): &vector<address> acquires Game {
         &borrow_global<Game>(signer::address_of(s)).players
     }
 
-    public fun unpack_deck_into_cards(self: &Deck): vector<Card> {
+    public(friend) fun get_moves(s: &signer): &vector<Playing_Moves> acquires Game {
+        &borrow_global<Game>(signer::address_of(s)).moves
+    }
+
+    public(friend) fun unpack_deck_into_cards(self: &Deck): vector<Card> {
         self.card
     }
 
-    public fun index_color(self: &Deck, i: u64): Color {
+    public(friend) fun index_color(self: &Deck, i: u64): Color {
         vector::borrow(&self.card, i).color
     }
 
-    public fun index_number(self: &Deck, i: u64): u8 {
+    public(friend) fun index_number(self: &Deck, i: u64): u8 {
         vector::borrow(&self.card, i).number
     }
 
-    public fun get_color(self: &Card): Color {
+    public(friend) fun get_color(self: &Card): Color {
         self.color
     }
 
-    public fun get_number(self: &Card): u8 {
+    public(friend) fun get_number(self: &Card): u8 {
         self.number
     }
 }
