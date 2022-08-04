@@ -5,6 +5,7 @@ module local::objects {
     use std::vector;
     use std::signer;
     use sui::object::{Self, ID};
+    use sui::transfer;
 
     const EMIN_NUMBER_OF_PLAYERS_NOT_REACHED: u8 = 2;
 
@@ -15,6 +16,7 @@ module local::objects {
     // is that it remains property of the admin.
     struct Game has key {
         id: ID,
+        admin: address,
         max_number_of_players: u8,
         players: vector<address>,
         moves: vector<Playing_Moves>,
@@ -49,6 +51,7 @@ module local::objects {
         move_to(s, 
             Game {
                 id: object::id_from_address(signer::address_of(s)),
+                admin: signer::address_of(s),
                 max_number_of_players: number_of_players,
                 players: vector::singleton<address>(signer::address_of(s)),
                 moves: vector::singleton<Playing_Moves>(
@@ -61,8 +64,8 @@ module local::objects {
         );
     }
 
-    fun give_administration() {
-
+// TODO: think of a way to transfer the 'Game' object to another address.
+    public(friend) fun give_administration(addr: &address) {
     }
 
     public(friend) fun is_admin(addr: &address): bool {
@@ -110,7 +113,7 @@ module local::objects {
         deck
     }
 
-    // ###Check it to make sure it works well.
+    // TODO: Check it to make sure it works well.
     fun generate_random_cards(): Card { Card { number: 0, color: colors::return_red() }}
 
     public(friend) fun get_max_number_of_players(s: &signer): u64 acquires Game {

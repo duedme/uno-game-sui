@@ -8,8 +8,10 @@ module local::game {
 
     const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
     const EADMIN_WANTS_TO_LEAVE: u8 = 3;
+    const ENOT_ADMIN: u8 = 4;
 
-    // Tells if player has checked wether it has a card to play in his round
+    // Tells if player has checked wether it has a card to play in his round.
+    // TODO: Used later to take new random cards from de pile.
     struct Status_Available_Cards {
         status: vector<bool>,
     }
@@ -28,7 +30,10 @@ module local::game {
         objects::add_player(s);
     }
 
-    fun make_someone_an_admin(s: &signer)
+    fun make_someone_an_admin(s: &signer, new_admin: &address) {
+        assert!(objects::is_admin(&signer::address_of(s)), (ENOT_ADMIN as u64));
+        objects::give_administration(new_admin);
+    }
 
     // Starts a game with a defined number of players.
     fun new_game(number_of_players: u8, s: &signer) {
@@ -81,6 +86,7 @@ module local::game {
 
     // Use the card once it is known that it can be played
     // TODO: design a status system to check if the card is available for use
+    // TODO: implement a win function that is automatically called when someone is finished with its cards.
     public fun use_card(s: &signer, card: Card) acquires Place {
         let last_card = &mut borrow_global_mut<Place>(signer::address_of(s)).last_card;
         let length_of_place = vector::length(last_card);
