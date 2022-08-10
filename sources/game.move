@@ -39,9 +39,12 @@ module local::game {
         event::emit(starting_deck);
     }
 
+    //Lets a player quit the game. If he was the last one. UNO automatically ends.
     fun quit_game(s: &signer, _deck: Deck) {
         assert!(!objects::is_admin(&signer::address_of(s)), (EADMIN_WANTS_TO_LEAVE as u64));
         objects::leave_game(s);
+        
+        if(vector::length(&objects::get_players(s)) == 0) { objects::end_game(s); }
     }
 
     fun shout_UNO(s: &signer) {
@@ -68,40 +71,43 @@ module local::game {
 
         let deck: Deck = objects::get_deck(s);
         let last_card = &borrow_global_mut<Place>(signer::address_of(s)).last_card;
-        let length_of_place = vector::length(last_card);
-        let pack: &vector<Card> = &objects::unpack_deck_into_cards(&deck);
+        let pack_of_cards: &vector<Card> = &objects::unpack_deck_into_cards(&deck);
         let color_pack: vector<Color> = vector::empty<Color>();
         let number_pack: vector<u8> = vector::empty<u8>();
-        let _check: bool = false;
+        let check: bool = false;
         let i: u64 = 0;
 
-        while(i < vector::length(pack)) {
+
+        while(i < vector::length(pack_of_cards)) {
             vector::push_back(&mut color_pack, objects::index_color(&deck, i));
             vector::push_back(&mut number_pack, objects::index_number(&deck, i));
             i = i + 1;
         };
 
-        // TODO: AQUi EL INDICE DEBERiA SER TOMADO DE DECK Y NO DE COLORPACK NI NUMBERPACK.
-        (_check, i) = vector::index_of<Color>(&color_pack, &objects::get_color(vector::borrow(last_card, length_of_place - 1)));
-        if (_check == true) {
+        (check, i) = vector::index_of<Color>(&color_pack, &objects::get_color(vector::borrow(last_card, vector::length(last_card) - 1)));
+        if (check == true) {
             objects::update_state(signer::address_of(s), true);
-            event::emit(*pack);
-            return (_check, i)
+            event::emit(*pack_of_cards);
+            return (check, i)
         };
 
-        (_check, i) = vector::index_of<u8>(&number_pack, &objects::get_number(vector::borrow(last_card, length_of_place - 1)));
-        if (_check == true) {
+        (check, i) = vector::index_of<u8>(&number_pack, &objects::get_number(vector::borrow(last_card, vector::length(last_card) - 1)));
+        if (check == true) {
             objects::update_state(signer::address_of(s), true);
-            event::emit(*pack);
-            return (_check, i)
+            event::emit(*pack_of_cards);
+            return (check, i)
         };
-        (_check, i)
+
+        // Since player has no matching cards, he will be given a new random one.
+        objects::add_new_card_to_deck(s);
+
+        (check, i)
     }
 
     // Use the card once it is known that it can be played.
     // If player has only one card left, the game will automatically shout UNO!
-    // TODO: design a status system to check if the card is available for use
-    // TODO: implement a win function that is automatically called when someone is finished with its cards.
+    // TODO: Revisar quela carta a la que se aplico el estado sea realmente esa.
+    //     Porque si no cualquiera confirma una carta roja y despues usara la verde que no queda.
     public fun use_card(s: &signer, card: Card) acquires Place {
         assert!(objects::get_state(signer::address_of(s)) == true, (ECARD_NOT_CHECKED as u64));
 
