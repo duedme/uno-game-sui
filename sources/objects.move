@@ -1,29 +1,28 @@
-module local::objects {
+module local::game_objects {
     friend local::game;
 
-    use std::ascii::{Self, String};
     use local::colors::{Self, Color};
+    use std::ascii::{Self, String};
     use std::vector;
     use std::signer;
+    use std::hash;
     use sui::object::{Self, ID};
     use sui::transfer;
     use sui::vec_map::{Self, VecMap};
-    use std::hash;
 
     const EMIN_NUMBER_OF_PLAYERS_NOT_REACHED: u8 = 2;
     const ENON_ADMIN_ENDING_GAME: u8 = 7;
+    const ESIGNER_IS_NOT_ADMIN_OF_ANY_GAME: u8 = 8;
 
     // NFT with unique id of the game linked with special Decks so that previous ones do not work.
     // The'rounds' slot is type-vector which stores a Card-type vector. Its intention is to record all the
     // moves of the players.
-    // TODO: figure out how to share this structure from the admin to the other players. The idea
-    // is that it remains property of the admin.
     struct Game has key, copy, drop {
         id: ID,
         admin: address,
         max_number_of_players: u8,
         players: vector<address>,
-//        moves: vector<Playing_Moves>,
+        rounds: VecMap<u8, vector<address>>,
         moves: VecMap<address, vector<Card>>,
     }
 
@@ -42,19 +41,6 @@ module local::objects {
         //special: bool
     }
 
-    // Tells if player has checked wether it has a card to play in his round.
-    // TODO: Used later to take new random cards from de pile.
-   /* struct Status_Available_Cards {
-//        status: vector<bool>,
-        status: VecMap<String, bool>,
-    }*/
-
-    /*struct Plus has store { amount: u8 }
-    struct Reverse has store {}
-    struct Block has store {}
-    struct Change_Color_and_Plus has store { amount: Plus }
-    struct Change_Color has store {}*/
-
     public(friend) fun get_state(addr: address): bool acquires Deck {
         *vec_map::get(&borrow_global<Deck>(addr).state, &ascii::string(b"Checked"))
     }
@@ -62,6 +48,23 @@ module local::objects {
     public(friend) fun update_state(addr: address, stat: bool) acquires Deck {
         let status = vec_map::get_mut(&mut borrow_global_mut<Deck>(addr).state, &ascii::string(b"Checked"));
         *status = stat;
+    }
+
+    public(friend) fun check_participation(s: &signer) acquires Game {
+        let game_rounds = get_game(signer::address_of(s)).rounds;
+        let round_number = (vec_map::size(&game_rounds) as u8);
+
+        if(vec_map::is_empty<u8, vector<address>>(&game_rounds)) {
+            vec_map::insert(&mut game_rounds, 1, vector::singleton(signer::address_of(s)));
+        } else {
+            let addresses = vec_map::get_mut(&mut game_rounds, &round_number);
+            vector::push_back(addresses, signer::address_of(s));
+        };
+
+        let participations = vec_map::get(&mut game_rounds, &round_number);
+        if(vector::length(participations) == vector::length(&get_players(s))) {
+            vec_map::insert(&mut game_rounds, round_number + 1, vector::empty<address>());
+        }
     }
 
     // Drops the current 'Game' struct.
@@ -84,6 +87,7 @@ module local::objects {
                 admin: signer::address_of(s),
                 max_number_of_players: number_of_players,
                 players: vector::singleton<address>(signer::address_of(s)),
+                rounds: vec_map::empty<u8, vector<address>>(),
                 moves,
             }
         );
@@ -97,9 +101,6 @@ module local::objects {
         exists<Game>(*addr)
     }
     
-    // TODO: implement testing on this function.
-    // TODO: it currently works only with the admin. Need to be implemented by the other
-    // players too. Maybe whith the sharing atribute mentioned on line 12.
     public(friend) fun leave_game(s: &signer) acquires Game {
         let players = get_players(s);
         let j: u64;
@@ -109,26 +110,26 @@ module local::objects {
         vector::remove(&mut players, j);
     }
 
-    // TODO: esta se ve rara porque no puede usar get_players si todavia no esta en el juego.
-    public(friend) fun add_player(s: &signer, new_players_address: address) acquires Game, Deck {
+    public(friend) fun add_player(s: &signer, new_player: address) acquires Game, Deck {
+        assert!(exists<Game>(signer::address_of(s)), (ESIGNER_IS_NOT_ADMIN_OF_ANY_GAME as u64));
+
         let all_players = get_players(s);
         let new_moves = get_moves(s);
 
-        move_to(&new_players_address, new_deck(s, &new_players_address));
-        vector::push_back(&mut all_players, &new_players_address);
-        vec_map::insert(&mut new_moves, &new_players_address, vector::empty<Card>());
-        transfer::share_object(get_game(&new_players_address));
+        transfer::transfer(new_deck(s, new_player), new_player);
+        vector::push_back(&mut all_players, new_player);
+        vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
+        transfer::share_object(get_game(new_player));
     }
 
-    //TODO: agregar que la deck tenga el mismo id que el 'Game'. Pero se tiene que arreglar primero add_player().
-    public(friend) fun new_deck(s: &signer, new_players_address: address): Deck acquires Deck {
+    public(friend) fun new_deck(s: &signer, new_player: address): Deck acquires Deck, Game {
         let i = 0u8;
         let state = vec_map::empty<String, bool>();
         vec_map::insert<String, bool>(&mut state, ascii::string(b"Checked"), false);
 
         let deck = Deck {
-            id: object::id_from_address(&new_players_address),
-            id_from_game: get_game(),
+            id: object::id_from_address(new_player),
+            id_from_game: get_game(signer::address_of(s)).id,
             card: vector::empty<Card>(),
             amount: 7,
             state,
@@ -169,19 +170,10 @@ module local::objects {
         (borrow_global_mut<Game>(signer::address_of(s)).max_number_of_players as u64)
     }
     
-    //gives problems
     public(friend) fun get_deck(s: &signer): Deck acquires Deck {
         *borrow_global<Deck>(signer::address_of(s))
     }
 
-    // TODO: Adapt this so every player is able to call it. Currently only the admin can do that.
-    // Maybe with the sharing feature.
-    /*public fun get_moves(s: &signer): &mut vector<vector<Card>> acquires Game {
-        &mut borrow_global_mut<Game>(signer::address_of(s)).moves
-    }*/
-
-    // TODO: Adapt this so every player is able to call it. Currently only the admin can do that.
-    // Maybe with the sharing feature. 
     public fun get_game(addr: address): Game acquires Game {
         *borrow_global_mut<Game>(addr)
     }
