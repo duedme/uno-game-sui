@@ -4,7 +4,7 @@
 // the necessary information regarding players and shots, among others.
 
 module local::game_objects {
-    friend local::game;
+    friend local::uno;
 
     use local::colors::{Self, Color};
     use std::ascii::{Self, String};

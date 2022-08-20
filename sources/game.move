@@ -11,7 +11,7 @@
 // TODO: Check that the card to which the status was applied is really the one to be played.
 // TODO: implement special cards. For example: +2, +4, etc.
 
-module local::game {
+module local::uno{
     use std::ascii::{Self, String};
     use local::game_objects::{Self, Deck, Card};
     use local::colors::Color;
@@ -55,7 +55,7 @@ module local::game {
 
     //Lets a player quit the game. If he was the last one. UNO automatically end.
     // Admins cannot exit until they have transferred the game to another player.
-    fun quit_game(s: &signer, _deck: Deck) {
+    fun quit_game(s: &signer) {
         assert!(!game_objects::is_admin(&signer::address_of(s)), (EADMIN_WANTS_TO_LEAVE as u64));
         game_objects::leave_game(s);
         
@@ -114,9 +114,11 @@ module local::game {
     // Use the card once it is known that it can be played.
     // If player has only one card left, the game will automatically shout UNO!
     public fun use_card(s: &signer, card: Card) acquires Place {
+        let last_card = &mut borrow_global_mut<Place>(signer::address_of(s)).last_card;
+
+        if(vector::is_empty(last_card)) { game_objects::update_state(signer::address_of(s), true); };
         assert!(game_objects::get_state(signer::address_of(s)) == true, (ECARD_NOT_CHECKED as u64));
 
-        let last_card = &mut borrow_global_mut<Place>(signer::address_of(s)).last_card;
         let length_of_place = vector::length(last_card);
         let deck: Deck = game_objects::get_deck(s);
         let cards_in_deck = game_objects::get_cards_in_deck(&deck);
