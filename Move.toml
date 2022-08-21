@@ -1,5 +1,5 @@
 [package]
-name = "game_assets"
+name = "UNO!"
 version = "0.0.0"
 
 [dependencies]
@@ -9,5 +9,3 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 std = "0x1"
 sui = "0x2"
 local = "0xF"
-
-[dev-addresses]
