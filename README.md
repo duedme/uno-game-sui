@@ -24,7 +24,7 @@ More specifically:
 
 to know the address which you play with and
 
-    sui call
+    sui client call
 
 to call the special functions of the game.    
 
@@ -100,8 +100,6 @@ of conduct, and the process for submitting pull requests to us.
 
   - **Daniel Espejel** - *Writing the Game* -
     [Duedme](https://github.com/Duedme)
-  - **Omar Espejel**
-  - **Eduardo Espejel**
 
 ## License
 
