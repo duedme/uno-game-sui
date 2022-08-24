@@ -71,7 +71,7 @@ module local::game_objects {
 
     // Records that a person has already played in the current round.
     public(friend) fun check_participation(s: &signer) acquires Game {
-        let game_rounds = get_game(signer::address_of(s)).rounds;
+        let game_rounds = get_mut_game(signer::address_of(s)).rounds;
         let round_number = (vec_map::size(&game_rounds) as u8);
 
         if(vec_map::is_empty<u8, vector<address>>(&game_rounds)) {
@@ -98,10 +98,10 @@ module local::game_objects {
 
     // Drops the current 'Game' struct.
     public(friend) fun end_game(s: &signer) acquires Game {
-        assert!(get_game(signer::address_of(s)).admin == signer::address_of(s),
+        assert!(get_mut_game(signer::address_of(s)).admin == signer::address_of(s),
             (ENON_ADMIN_ENDING_GAME as u64));
 
-        get_game(signer::address_of(s));
+        get_mut_game(signer::address_of(s));
     }
 
     // Makes one person the admin when the game starts. Here the new admin 
@@ -126,7 +126,7 @@ module local::game_objects {
 
     // An admin can give game control to another player.
     public(friend) fun give_administration(s: &signer, addr: address) acquires Game {
-        transfer::transfer(get_game(signer::address_of(s)), addr);
+        transfer::transfer(get_mut_game(signer::address_of(s)), addr);
     }
 
     // Confirm that someone has the structure 'Game' and is therefore
@@ -155,7 +155,7 @@ module local::game_objects {
         transfer::transfer(new_deck(s, new_player), new_player);
         vector::push_back(&mut all_players, new_player);
         vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
-        transfer::share_object(get_game(new_player));
+        transfer::share_object(get_mut_game(new_player));
     }
 
     // A new deck is created with all available attributes. Exactly 7 random cards will be given to play.
@@ -166,7 +166,7 @@ module local::game_objects {
 
         let deck = Deck {
             id: object::id_from_address(new_player),
-            id_from_game: get_game(signer::address_of(s)).id,
+            id_from_game: get_mut_game(signer::address_of(s)).id,
             card: vector::empty<Card>(),
             amount: 7,
             state,
@@ -220,14 +220,18 @@ module local::game_objects {
         *borrow_global<Deck>(signer::address_of(s))
     }
 
-    // The 'Game' structure is shown to a player.
     public(friend) fun get_game(addr: address): Game acquires Game {
+        *borrow_global<Game>(addr)
+    }
+
+    // Mutable 'Game' structure is shown to a player.
+    public(friend) fun get_mut_game(addr: address): Game acquires Game {
         *borrow_global_mut<Game>(addr)
     }
 
     // Rounds are displayed.
     public(friend) fun get_rounds(addr: address): VecMap<u8, vector<address>> acquires Game {
-        get_game(addr).rounds
+        get_mut_game(addr).rounds
     }
 
     // Player list is displayed.

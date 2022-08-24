@@ -2,6 +2,9 @@
 //
 // The way to start playing is to use the new_game() function which 
 // will give the game management and a deck of cards automatically.
+// When deciding the number of players in the game, 
+// remember that there can only be up to 10 of them.
+//
 // Other players can join later by calling enter_new_player(). 
 // Currently only the admin can call that method.
 //
@@ -11,7 +14,7 @@
 // TODO: Check that the card to which the status was applied is really the one to be played.
 // TODO: implement special cards. For example: +2, +4, etc.
 
-module local::uno{
+module local::uno {
     use std::ascii::{Self, String};
     use local::game_objects::{Self, Deck, Card};
     use local::colors::Color;
@@ -25,15 +28,21 @@ module local::uno{
     const ECARD_NOT_CHECKED: u8 = 5;
     const ECARD_ALREADY_CHECKED: u8 = 6;
     const EADDRESS_IS_NOT_ADMIN_OF_ANY_GAME: u8 = 7;
+    const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 9;
 
     // Simulates the place on the table where the played cards are left.
     struct Place has key {
         last_card: vector<Card>,
     }
 
+    // Gives the player a sample of all the game information.
+    fun know_game(s: &signer) {
+        event::emit(game_objects::get_game(signer::address_of(s)));
+    }
+
     // Adds a new player.
     // Currently only admins can call this function.
-    fun enter_new_player(s: &signer, games_admin: address) {
+    public fun enter_new_player(s: &signer, games_admin: address) {
         assert!(vector::length(&game_objects::get_players(s)) < game_objects::get_max_number_of_players(s),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
         game_objects::add_player(s, games_admin);
@@ -41,13 +50,14 @@ module local::uno{
 
     // Admins can make other players the current game admins.
     // There can only be one at a time.
-    fun make_someone_an_admin(s: &signer, new_admin: address) {
+    public fun make_someone_an_admin(s: &signer, new_admin: address) {
         assert!(game_objects::is_admin(&signer::address_of(s)), (ENOT_ADMIN as u64));
         game_objects::give_administration(s, new_admin);
     }
 
     // Starts a game with a defined number of players.
-    fun new_game(number_of_players: u8, s: &signer) {
+    public fun new_game(number_of_players: u8, s: &signer) {
+        assert!(number_of_players <= 10, (EA_LOT_OF_PLAYERS_WANT_TO_PLAY as u64));
         game_objects::be_the_game_admin_at_start(s, number_of_players);
         let starting_deck = game_objects::new_deck(s, signer::address_of(s));
         event::emit(starting_deck);
@@ -55,14 +65,14 @@ module local::uno{
 
     //Lets a player quit the game. If he was the last one. UNO automatically end.
     // Admins cannot exit until they have transferred the game to another player.
-    fun quit_game(s: &signer) {
+    public fun quit_game(s: &signer) {
         assert!(!game_objects::is_admin(&signer::address_of(s)), (EADMIN_WANTS_TO_LEAVE as u64));
         game_objects::leave_game(s);
         
         if(vector::length(&game_objects::get_players(s)) == 0) { game_objects::end_game(s); }
     }
     // Simulate saying "UNO!" when playing the classic game._check
-    fun shout_UNO(s: &signer) {
+    public fun shout_UNO(s: &signer) {
         let deck = game_objects::get_deck(s);
         let uno: String = ascii::string(b"UNO!");
         if (vector::length(&game_objects::get_cards_in_deck(&deck)) == 1) { event::emit(uno) }
