@@ -13,6 +13,7 @@
 //
 // TODO: Check that the card to which the status was applied is really the one to be played.
 // TODO: implement special cards. For example: +2, +4, etc.
+// TODO: finish know_number_opponents_cards_left method.
 
 module local::uno {
     use std::ascii::{Self, String};
@@ -36,8 +37,53 @@ module local::uno {
     }
 
     // Gives the player a sample of all the game information.
-    fun know_game(s: &signer) {
+    public fun know_game(s: &signer) {
         event::emit(game_objects::get_game(signer::address_of(s)));
+    }
+
+    // Gives the player information about who the admin is.
+    public fun know_admin(s: &signer) {
+        event::emit(game_objects::get_admin(signer::address_of(s)));
+    }
+
+    // Gives the player a list of all the players.
+    public fun know_players(s: &signer) {
+        event::emit(game_objects::get_players(s));
+    }
+
+    // Gives the player the number of players in the game.
+    public fun know_number_of_players(s: &signer) {
+        event::emit(game_objects::get_number_of_players(s));
+    }
+
+    // Gives the player the number of rounds that have elapsed.
+    public fun know_number_of_rounds(s: &signer) {
+        event::emit(game_objects::get_number_of_rounds(s));
+    }
+
+    // Gives the player a list of all the moves that have been made.
+    public fun know_all_moves(s: &signer) {
+        event::emit(game_objects::get_moves(s));
+    }
+
+    // Gives the player a copy of its deck.
+    public fun know_deck(s: &signer) {
+        event::emit(game_objects::get_deck(s));
+    }
+
+    // Gives a list of the player's cards.
+    public fun know_cards(s: &signer) {
+        event::emit(game_objects::get_cards_in_deck(&game_objects::get_deck(s)));
+    }
+    
+    // Gives player the number of cards it has left.
+    public fun know_number_of_cards_left(s: &signer) {
+        event::emit(game_objects::get_number_of_cards(s));
+    }
+
+    // Gives the player the number of cards his opponents have left.
+    public fun know_number_opponents_cards_left(_s: &signer) {
+
     }
 
     // Adds a new player.

@@ -1,11 +1,9 @@
 [package]
 name = "UNO!"
-version = "0.0.0"
+version = "1.0.0"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "main" }  
 
 [addresses]
-std = "0x1"
-sui = "0x2"
-local = "0xF"
+local = "0x0"

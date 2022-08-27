@@ -33,6 +33,7 @@ module local::game_objects {
         players: vector<address>,
         rounds: VecMap<u8, vector<address>>,
         moves: VecMap<address, vector<Card>>,
+        //deck: VecMap<address, vector<Deck>>,
     }
 
     // The basic shape of a card that has a number and a color is housed.
@@ -204,6 +205,26 @@ module local::game_objects {
     }
 
     // === `Getter` functions ===
+
+    // Tells a player who the admin is.
+    public(friend) fun get_admin(addr: address): address acquires Game {
+        borrow_global<Game>(addr).admin
+    }
+
+    // Gives the number of players in the game.
+    public(friend) fun get_number_of_players(s: &signer): u8 acquires Game {
+        (vector::length(&get_players(s)) as u8)
+    }
+
+    // Gives the number of rounds so far.
+    public(friend) fun get_number_of_rounds(s: &signer): u8 acquires Game {
+        (vec_map::size(&get_rounds(signer::address_of(s))) as u8)
+    }
+
+    // Gives the number of remaining cards of the signer.
+    public(friend) fun get_number_of_cards(s: &signer):u8 acquires Deck {
+        (vector::length(&get_cards_in_deck(&get_deck(s))) as u8)
+    }
 
     // It tells if a player can throw or if he doesn't have the right cards.
     public(friend) fun get_state(addr: address): bool acquires Deck {
