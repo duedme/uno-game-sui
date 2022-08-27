@@ -2,15 +2,76 @@
 
 UNO based card game.
 
-This card game contains the functionalities of UNO. It contains numbered colored cards so that everyone can collect and play them. Special cards such as +2, +4, reverse, etc. have not been implemented in the current version of the game. Wait for them soon.
+*Warning: this is experimental code that could change in future versions.*
+
+## What is UNO?
+
+UNO! is a card game with peculiarities regarding the classic Spanish or English cards. 
+This game can be used by 2 to 10 people in a single match.
+
+The objective is to get rid of all the cards in possession. Players must shout UNO! when they only have one card left; otherwise they will be penalized with another two extra in their deck.
+
+An usual deck of UNO! contains two types of cards: normal and special.
+Normal Cards: this type is divided into red, green, blue and yellow colors. In turn, each color is numbered from 0 to 9.
+
+Special Cards: they have a series of characteristics with abilities to alter the flow of the game. Among them are "Skip", "Reverse", "Draw", "Wild", etc.
+
+This game already has many variations like UNO Flip or UNO Spin. However, in this module we will focus on the classic version of UNO!.
+
+## What is this module?
+
+This module contains the basic functionalities of UNO. It includes numbered colored cards so that everyone can collect and play them. Special cards such as +2, +4, reverse, etc. have not been implemented in the current version of the game. Please wait for them soon.
 
 ## Getting Started
 
 To play this game all you need is to install [SUI](https://docs.sui.io/build/install). At this time you can only play from calls to functions to the Sui network from your console. However, there will soon be a more user-friendly version.
 
-## Prerequisites
+### Explicit instructions on how to install SUI on Unix-based systems
 
-The minimum requirements to run the software can be found on the [SUI](https://docs.sui.io/build/install)  website. However you should know that a machine capable of installing command line tools is required.
+This section will briefly tell you how to start a Sui network locally. Later we will connect to the [CLI client](https://docs.sui.io/devnet/build/cli-client) app. With this we will be ready to start playing UNO.
+
+Remember that if you want to get the complete and official instructions you can refer to the [Sui Tutorials](https://docs.sui.io/devnet/explore/tutorials) page where you will find step by step information and variants.
+
+#### Prerequisites
+
+You will need some tools like *Cargo*, *Git CLI* and *CMake*. Please go to the [Sui Prerequisites](https://docs.sui.io/devnet/build/install#prerequisites) page to find out the necessary tools specific to your machine.
+
+#### Sui Binaries
+
+To start we must install the Sui binaries:
+
+    cargo install --locked --git https://github.com/MystenLabs/sui.git --branch "devnet" sui sui-gateway
+
+This will allow us to create accounts, start a Sui network and use the game package.
+If the installation was successful, we can start with Genesis.
+
+#### Genesis
+
+The *genesis* command gives you the freedom to use four validators and five user accounts each with five gas objects. Gas objects will help you pay for the transactions required to play UNO.
+
+Start genesis with the following command:
+
+    sui genesis
+
+If you ever want to reset your accounts you can use
+
+    sui genesis --force
+
+to create a whole new set of users.
+
+Next we will start the Sui network.
+
+#### Start Sui network
+
+Run the following command to boot locally.
+
+    sui start
+
+Executing this command in console will not give you an output. The terminal window will be locked because you will now be running an instance of Sui.
+
+#### Comandos proveidos por la Sui network
+
+The following commands are used to interact with the UNO module and interact with your game dynamically.
 
 When installing SUI it will be time to use the commands related to:
 
@@ -24,9 +85,11 @@ More specifically:
 
 to know the address which you play with and
 
-    sui client call
+    sui client call --function <GAME_METHOD> --package 0x0 --module uno --args <METHOD_ARGUMENTS>
 
-to call the special functions of the game.    
+to call the special functions of the game.  
+
+Now open another window and continue to the [Running the Game](#running-the-game) section.
 
 ## Running the game
 
@@ -92,8 +155,15 @@ If a player was the last in the game. Using the above call will also drop the ga
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code
-of conduct, and the process for submitting pull requests to us.
+This project is still growing and will be improved over time. So feel free to give your opinions and contribute to the source code.
+
+Here are some ways you can support:
+
+* Fix bugs if found.
+* Create a branch with a translation to your language.
+* Complete documentation in the code if necessary.
+* Make tests of the game from your computer.
+* Complete some of the tasks marked as "TODO" in the source code
 
 
 ## Authors
