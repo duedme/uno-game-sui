@@ -20,7 +20,18 @@ This game already has many variations like UNO Flip or UNO Spin. However, in thi
 
 ## What is this module?
 
-This module contains the basic functionalities of UNO. It includes numbered colored cards so that everyone can collect and play them. Special cards such as +2, +4, reverse, etc. have not been implemented in the current version of the game. Please wait for them soon.
+This module is written in the Move language using the Sui libraries. It contains the basic functionalities of UNO. It includes numbered colored cards so that everyone can collect and play them. Special cards such as +2, +4, reverse, etc. have not been implemented in the current version of the game. Please wait for them soon.
+
+
+### Why Sui Move?
+
+Sui Move is excellent for creating an environment where there are objects capable of being sent as function arguments, returned in the same medium, and stored inside other objects. They can also be used through different contracts. This is unique to the Move language; it is something that does not exist in other popular languages.
+
+Thanks to this we can manage to create a game object, a deck object and a card object capable of being used in all places without the danger of losing them by accident or putting a game session at risk.
+
+When someone creates a new game session we are also creating a structure called *Game* that stores the information of an administrator, players, rounds, etc. Each player gets a deck that containing information on each player's card and whether or not his cards are special. All those characteristics are mutable for the good of the game and can be sent between players on the Sui Blockchain.
+
+That wouldn't be possible if it weren't for Sui Move's ease in writing concrete, object-oriented contracts. Due to the amount of transactions between players and the high number of active games that could be; the structure of the Sui Blockchain is the best for this implementation.
 
 ## Getting Started
 
@@ -164,6 +175,8 @@ Here are some ways you can support:
 * Complete documentation in the code if necessary.
 * Make tests of the game from your computer.
 * Complete some of the tasks marked as "TODO" in the source code
+
+Please feel free to make suggestions and comments to the [Github Issue](https://github.com/Duedme/UNO/issues/1).
 
 
 ## Authors
