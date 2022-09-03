@@ -1,8 +1,8 @@
+*Warning: this is experimental code that could change in future versions.*
+
 # UNO
 
 UNO based card game.
-
-*Warning: this is experimental code that could change in future versions.*
 
 ## What is UNO?
 
@@ -37,11 +37,15 @@ That wouldn't be possible if it weren't for Sui Move's ease in writing concrete,
 
 To play this game all you need is to install [SUI](https://docs.sui.io/build/install). At this time you can only play from calls to functions to the Sui network from your console. However, there will soon be a more user-friendly version.
 
-### Explicit instructions on how to install SUI on Unix-based systems
+### Instructions on how to install SUI on Unix-based systems and use Sui CLI
 
 This section will briefly tell you how to start a Sui network locally. Later we will connect to the [CLI client](https://docs.sui.io/devnet/build/cli-client) app. With this we will be ready to start playing UNO.
 
+If you already know how to install Sui or already have it on your computer. Please go to [Starting to Play](#starting-to-play).
+
 Remember that if you want to get the complete and official instructions you can refer to the [Sui Tutorials](https://docs.sui.io/devnet/explore/tutorials) page where you will find step by step information and variants.
+
+First we are going to install the Sui Binaries, then use the *Genesis* command and finally initialize the Sui Network.
 
 #### Prerequisites
 
@@ -80,7 +84,7 @@ Run the following command to boot locally.
 
 Executing this command in console will not give you an output. The terminal window will be locked because you will now be running an instance of Sui.
 
-#### Comandos proveidos por la Sui network
+#### Commands provided by the Sui network
 
 The following commands are used to interact with the UNO module and interact with your game dynamically.
 
@@ -176,7 +180,7 @@ Here are some ways you can support:
 * Make tests of the game from your computer.
 * Complete some of the tasks marked as "TODO" in the source code
 
-Please feel free to make suggestions and comments to the [Github Issue](https://github.com/Duedme/UNO/issues/1).
+Please feel free to open an issue in the UNO repository.
 
 
 ## Authors
