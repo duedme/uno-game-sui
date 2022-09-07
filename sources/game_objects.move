@@ -73,7 +73,7 @@ module local::game_objects {
 
     // Records that a person has already played in the current round.
     public(friend) fun check_participation(s: &signer) acquires Game {
-        let game_rounds = get_mut_game(signer::address_of(s)).rounds;
+        let game_rounds = get_game(signer::address_of(s)).rounds;
         let round_number = (vec_map::size(&game_rounds) as u8);
 
         if(vec_map::is_empty<u8, vector<address>>(&game_rounds)) {
@@ -100,7 +100,7 @@ module local::game_objects {
 
     // Deletes the current 'Game' struct.
     public(friend) fun end_game(s: &signer) acquires Game {
-        assert!(get_mut_game(signer::address_of(s)).admin == signer::address_of(s),
+        assert!(get_game(signer::address_of(s)).admin == signer::address_of(s),
             (ENON_ADMIN_ENDING_GAME as u64));
 
         let Game { id, admin, max_number_of_players, players, rounds, moves } = move_from<Game>(signer::address_of(s));
@@ -164,7 +164,7 @@ public(friend) fun add_player(s: &signer, new_player: address, ctx: &mut TxConte
 
     let game = move_from<Game>(signer::address_of(s));
     transfer::share_object(game);
-    move_to(s, game);
+    //move_to(s, game);
 }
 
     // A new deck is created with all available attributes. Exactly 7 random cards will be given to play.
@@ -216,7 +216,7 @@ public(friend) fun add_player(s: &signer, new_player: address, ctx: &mut TxConte
 
     // Tells a player who the admin is.
     public(friend) fun get_admin(addr: address): address acquires Game {
-        borrow_global<Game>(addr).admin
+        get_game(addr).admin
     }
 
     // Gives the number of players in the game.
@@ -241,7 +241,7 @@ public(friend) fun add_player(s: &signer, new_player: address, ctx: &mut TxConte
 
     // It is consulted in 'Game' what is the maximum number of players in the game.
     public(friend) fun get_max_number_of_players(s: &signer): u64 acquires Game {
-        (borrow_global_mut<Game>(signer::address_of(s)).max_number_of_players as u64)
+        (get_game(signer::address_of(s)).max_number_of_players as u64)
     }
     
     // A player is shown its deck.
@@ -249,39 +249,41 @@ public(friend) fun add_player(s: &signer, new_player: address, ctx: &mut TxConte
         borrow_global<Deck>(signer::address_of(s))
     }
 
-    public(friend) fun get_game(addr: address): Game acquires Game {
+    /*public(friend) fun get_game(addr: address): Game acquires Game {
         let game = move_from<Game>(addr);
         game
-    }
+    }*/
 
-    // Non-mutable 'Game' structure is shown to a player.
+    /*// Non-mutable 'Game' structure is shown to a player.
     public(friend) fun get_borrowed_game(addr: address): &Game acquires Game {
         borrow_global<Game>(addr)
-    }
+    }*/
 
     // Unwraps the inner ID inside the UID of the game.
     public(friend) fun get_game_id(addr: address): ID acquires Game {
-        object::id(get_borrowed_game(addr))
+        object::id(get_game(addr))
     }
 
     // Mutable 'Game' structure is shown to a player.
-    public(friend) fun get_mut_game(addr: address): &Game acquires Game {
-        borrow_global_mut<Game>(addr)
+    public(friend) fun get_game(addr: address): &Game acquires Game {
+        borrow_global<Game>(addr)
     }
 
     // Rounds are displayed.
     public(friend) fun get_rounds(addr: address): VecMap<u8, vector<address>> acquires Game {
-        get_mut_game(addr).rounds
+        get_game(addr).rounds
     }
 
     // Player list is displayed.
     public(friend) fun get_players(s: &signer): vector<address> acquires Game {
-        borrow_global<Game>(signer::address_of(s)).players
+        //borrow_global<Game>(signer::address_of(s)).players
+        get_game(signer::address_of(s)).players
     }
 
     // The list of cards used by each player is displayed.
     public(friend) fun get_moves(s: &signer): VecMap<address, vector<Card>> acquires Game {
-        borrow_global<Game>(signer::address_of(s)).moves
+        //borrow_global<Game>(signer::address_of(s)).moves
+        get_game(signer::address_of(s)).moves
     }
 
     // The cards available in a player's deck are displayed.
