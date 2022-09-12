@@ -17,12 +17,12 @@
 
 module local::uno {
     use std::ascii::{Self, String};
-    use local::game_objects::{Self, Deck, Card};
+    use local::game_objects::{Self, Game, Deck, Card};
     use local::colors::Color;
     use std::signer;
     use std::vector;
     use sui::event;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
 
     const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
     const EADMIN_WANTS_TO_LEAVE: u8 = 3;
@@ -90,23 +90,28 @@ module local::uno {
     // Adds a new player.
     // Currently only admins can call this function.
     public fun enter_new_player(s: &signer, games_admin: address, ctx: &mut TxContext) {
-        assert!(vector::length(&game_objects::get_players(s)) < game_objects::get_max_number_of_players(s),
+        assert!(vector::length(&game_objects::get_players(tx_context::signer_(ctx))) < game_objects::get_max_number_of_players(tx_context::signer_(ctx)),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
         game_objects::add_player(s, games_admin, ctx);
     }
 
     // Admins can make other players the current game admins.
     // There can only be one at a time.
-    public fun make_someone_an_admin(s: &signer, new_admin: address) {
-        assert!(game_objects::is_admin(&signer::address_of(s)), (ENOT_ADMIN as u64));
-        game_objects::give_administration(s, new_admin);
+    public fun make_someone_an_admin(game: Game, new_admin: address, ctx: &mut TxContext) {
+        assert!(game_objects::is_admin(&tx_context::sender(ctx)), (ENOT_ADMIN as u64));
+        game_objects::give_administration(game, new_admin);
     }
 
     // Starts a game with a defined number of players.
-    public fun new_game(number_of_players: u8, s: &signer, ctx: &mut TxContext) {
+    // TODO: implement differently.
+    public fun new_game(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players <= 10, (EA_LOT_OF_PLAYERS_WANT_TO_PLAY as u64));
-        game_objects::be_the_game_admin_at_start(s, number_of_players, ctx);
-        let starting_deck = game_objects::new_deck(s, signer::address_of(s), ctx);
+        let sign = tx_context::signer_(ctx);
+
+        game_objects::be_the_game_admin_at_start(number_of_players, ctx);
+
+        //TODO: check 'starting_deck' ownership.
+        let starting_deck = game_objects::new_deck(signer::address_of(sign), ctx);
         event::emit(starting_deck);
     }
 

@@ -15,7 +15,7 @@ module local::game_objects {
     use sui::transfer;
     use sui::vec_map::{Self, VecMap};
     use sui::event;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
 
     const EMIN_NUMBER_OF_PLAYERS_NOT_REACHED: u8 = 2;
     const ENON_ADMIN_ENDING_GAME: u8 = 7;
@@ -90,48 +90,52 @@ module local::game_objects {
     }
 
     // Wins and finishes the game by dropping the struct 'Game'.
-    public(friend) fun win(s: &signer, cards: vector<Card>) acquires Game {
+    public(friend) fun win(game: Game, cards: vector<Card>, ctx: &mut TxContext) acquires Game {
         let game_won_and_finished: String = ascii::string(b"You won the game!");
         event::emit(cards);
         event::emit(game_won_and_finished);
 
-        end_game(s);
+        end_game(game, ctx);
     }
 
     // Deletes the current 'Game' struct.
-    public(friend) fun end_game(s: &signer) acquires Game {
-        assert!(get_game(signer::address_of(s)).admin == signer::address_of(s),
+    public(friend) fun end_game(game: Game, ctx: &mut TxContext) acquires Game {
+        assert!(get_admin(tx_context::sender(ctx)) == tx_context::sender(ctx),
             (ENON_ADMIN_ENDING_GAME as u64));
 
-        let Game { id, admin, max_number_of_players, players, rounds, moves } = move_from<Game>(signer::address_of(s));
+        let Game { id, admin: _, max_number_of_players: _, players: _, rounds: _, moves: _ } = game;
 
         object::delete(id);
     }
 
     // Makes one person the admin when the game starts. Here the new admin 
     // will be given a 'Game' structure with its address as identifier.
-    public(friend) fun be_the_game_admin_at_start(s: &signer, number_of_players: u8, ctx: &mut TxContext) {
+    public(friend) fun be_the_game_admin_at_start(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players > 1, (EMIN_NUMBER_OF_PLAYERS_NOT_REACHED as u64));
 
         let moves = vec_map::empty<address, vector<Card>>();
-        vec_map::insert(&mut moves, signer::address_of(s), vector::empty<Card>());
+        vec_map::insert(&mut moves, tx_context::sender(ctx), vector::empty<Card>());
 
-        move_to(s, 
+        transfer::transfer( 
             Game {
                 id: object::new(ctx),
-                admin: signer::address_of(s),
+                admin: tx_context::sender(ctx),
                 max_number_of_players: number_of_players,
-                players: vector::singleton<address>(signer::address_of(s)),
+                players: vector::singleton<address>(tx_context::sender(ctx)),
                 rounds: vec_map::empty<u8, vector<address>>(),
                 moves,
-            }
+            },
+            tx_context::sender(ctx),
         );
     }
 
     // An admin can give game control to another player.
-    public(friend) fun give_administration(s: &signer, addr: address) acquires Game {
+    public(friend) fun give_administration(game: Game, addr: address) {
 //        transfer::transfer(get_mut_game(signer::address_of(s)), addr);
-        transfer::transfer(move_from<Game>(signer::address_of(s)), addr);
+//        transfer::transfer(move_from<Game>(signer::address_of(s)), addr);
+
+        // TODO: use object instead of move_from method.
+        transfer::transfer(game, addr);
     }
 
     // Confirm that someone has the structure 'Game' and is therefore
@@ -141,48 +145,49 @@ module local::game_objects {
     }
     
     // A player will be removed from the player list in 'Game'.
-    public(friend) fun leave_game(s: &signer) acquires Game {
-    let players = get_players(s);
+    public(friend) fun leave_game(ctx: &mut TxContext) acquires Game {
+    let players = get_players(tx_context::signer_(ctx));
     let j: u64;
     
-    (_, j) = vector::index_of(&players, &signer::address_of(s));
+    (_, j) = vector::index_of(&players, &tx_context::sender(ctx));
 
     vector::remove(&mut players, j);
 }
 
 // An admin can add someone to the player list and give them a deck.
 // TODO: check this method's implementation.
-public(friend) fun add_player(s: &signer, new_player: address, ctx: &mut TxContext) acquires Game, Deck {
-    assert!(exists<Game>(signer::address_of(s)), (ESIGNER_IS_NOT_ADMIN_OF_GAME as u64));
+// TODO: is "share_object" necessary?
+public(friend) fun add_player(new_player: address, ctx: &mut TxContext) acquires Game, Deck {
+    assert!(exists<Game>(tx_context::sender(ctx)), (ESIGNER_IS_NOT_ADMIN_OF_GAME as u64));
 
-    let all_players = get_players(s);
-    let new_moves = get_moves(s);
+    let all_players = get_players(tx_context::signer_(ctx));
+    let new_moves = get_moves(tx_context::signer_(ctx));
 
-    transfer::transfer(new_deck(s, new_player, ctx), new_player);
+    transfer::transfer(new_deck(new_player, ctx), new_player);
     vector::push_back(&mut all_players, new_player);
     vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
 
-    let game = move_from<Game>(signer::address_of(s));
+    let game = move_from<Game>(tx_context::sender(ctx));
     transfer::share_object(game);
     //move_to(s, game);
 }
 
     // A new deck is created with all available attributes. Exactly 7 random cards will be given to play.
-    public(friend) fun new_deck(s: &signer, new_player: address, ctx: &mut TxContext): Deck acquires Deck, Game {
+    public(friend) fun new_deck(new_player: address, ctx: &mut TxContext): Deck acquires Deck, Game {
         let i = 0u8;
         let state = vec_map::empty<String, bool>();
         vec_map::insert<String, bool>(&mut state, ascii::string(b"Checked"), false);
 
         let deck = Deck {
             id: object::new(ctx),
-            id_from_game: get_game_id(signer::address_of(s)),
+            id_from_game: get_game_id(tx_context::sender(ctx)),
             card: vector::empty<Card>(),
             amount: 7,
             state,
         };
 
         while( i < 7 ) {
-            vector::push_back( &mut deck.card, generate_random_card(s) )
+            vector::push_back( &mut deck.card, generate_random_card(ctx) )
         };
 
         deck
@@ -190,13 +195,14 @@ public(friend) fun add_player(s: &signer, new_player: address, ctx: &mut TxConte
 
     // Summons a new random card and appends it to players deck.
     // It is usually used when the player cannot play more cards than he owns.
-    public(friend) fun add_new_card_to_deck(s: &signer) acquires Deck {
-        vector::push_back(&mut get_cards_in_deck(get_deck(s)), generate_random_card(s));
+    public(friend) fun add_new_card_to_deck(ctx: &mut TxContext) acquires Deck {
+        vector::push_back(&mut get_cards_in_deck(get_deck(tx_context::signer_(ctx)))
+            , generate_random_card(ctx));
     }
 
     // Generates random cards. There are 9 for each color (red, green, blue and yellow).
-    fun generate_random_card(s: &signer): Card acquires Deck {
-        let hashed = hash::sha2_256(object::id_bytes(get_deck(s)));
+    fun generate_random_card(ctx: &mut TxContext): Card acquires Deck {
+        let hashed = hash::sha2_256(object::id_bytes(get_deck(tx_context::signer_(ctx))));
         let card_number = vector::pop_back(&mut hashed);
         card_number = card_number % 36;
         card_number = card_number + 1;
