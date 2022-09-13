@@ -32,11 +32,6 @@ module local::uno {
     const EADDRESS_IS_NOT_ADMIN_OF_ANY_GAME: u8 = 7;
     const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 9;
 
-    // Simulates the place on the table where the played cards are left.
-    struct Place has key {
-        last_card: vector<Card>,
-    }
-
     // Gives the player a sample of all the game information.
     /*public fun know_game(s: &signer) {
         event::emit(game_objects::get_game(signer::address_of(s)));
@@ -65,6 +60,16 @@ module local::uno {
     // Gives the player a list of all the moves that have been made.
     public fun know_all_moves(game: Game) {
         event::emit(game_objects::get_moves(game));
+    }
+
+    // Gives the player a list of all cards already used in the game.
+    public fun know_all_used_cards(game: Game) {
+        event::emit(game_objects::get_all_used_cards(game));
+    }
+
+    // Gives the player only the last card used in the game.
+    public fun know_last_card_used_in_game(game: Game) {
+        event::emit(game_objects::get_last_used_card(game));
     }
 
     /*// Gives the player a copy of its deck.
@@ -134,10 +139,10 @@ module local::uno {
     // The game automatically checks to see if the player has already checked that they have a card available.
     // If player didn't have one, the game will give a random one.
     // 
-    public fun check_cards(deck: Deck, ctx: &mut TxContext): (bool, u64) acquires Place {
+    public fun check_cards(game: Game, deck: Deck, ctx: &mut TxContext): (bool, u64) {
         assert!(game_objects::get_state(deck) == false, (ECARD_ALREADY_CHECKED as u64));
 
-        let last_card = &borrow_global_mut<Place>(signer::address_of(s)).last_card;
+        let last_card_in_place = &game_objects::get_last_used_card(game);
         let pack_of_cards: &vector<Card> = &game_objects::get_cards_in_deck(&deck);
         let color_pack: vector<Color> = vector::empty<Color>();
         let number_pack: vector<u8> = vector::empty<u8>();
@@ -151,14 +156,14 @@ module local::uno {
             i = i + 1;
         };
 
-        (_check, i) = vector::index_of<Color>(&color_pack, &game_objects::get_color(vector::borrow(last_card, vector::length(last_card) - 1)));
+        (_check, i) = vector::index_of<Color>(&color_pack, &game_objects::get_color(last_card_in_place));
         if (_check == true) {
             game_objects::update_state(deck, true);
             event::emit(*pack_of_cards);
             return (_check, i)
         };
 
-        (_check, i) = vector::index_of<u8>(&number_pack, &game_objects::get_number(vector::borrow(last_card, vector::length(last_card) - 1)));
+        (_check, i) = vector::index_of<u8>(&number_pack, &game_objects::get_number(last_card_in_place));
         if (_check == true) {
             game_objects::update_state(deck, true);
             event::emit(*pack_of_cards);
@@ -173,20 +178,21 @@ module local::uno {
 
     // Use the card once it is known that it can be played.
     // If player has only one card left, the game will automatically shout UNO!
-    public fun use_card(game: Game, deck: Deck, card: Card, ctx: &mut TxContext) acquires Place {
-        let last_card = &mut borrow_global_mut<Place>(signer::address_of(s)).last_card;
+    public fun use_card(game: Game, deck: Deck, card: Card, ctx: &mut TxContext) {
+        let all_cards = &mut game_objects::get_all_used_cards(game);
 
-        if(vector::is_empty(last_card)) { game_objects::update_state(deck, true); };
+        if(vector::is_empty(all_cards)) { game_objects::update_state(deck, true); };
         assert!(game_objects::get_state(deck) == true, (ECARD_NOT_CHECKED as u64));
 
-        let length_of_place = vector::length(last_card);
+        let length_of_place = vector::length(all_cards);
         let cards_in_deck = game_objects::get_cards_in_deck(&deck);
         
         // adds the card in the deck to the pile of used ones
-        vector::push_back(last_card, card);
+        vector::push_back(all_cards, card);
 
         // Finds and deletes the used card of player's current deck
-        let (_, i) = vector::index_of(&cards_in_deck, vector::borrow(last_card, length_of_place - 1));
+        let last_card_in_deck = game_objects::get_last_used_card(game);
+        let (_, i) = vector::index_of(&cards_in_deck, &last_card_in_deck);
         vector::remove(&mut cards_in_deck, i);
 
         event::emit(game_objects::get_cards_in_deck(&deck));
@@ -201,8 +207,8 @@ module local::uno {
     }
 
     // Use compare_cards and use_cards one after the other
-    public fun compare_cards_and_use(game: Game, deck: Deck, ctx: &mut TxContext) acquires Place {
-        let (_check, i) = check_cards(deck, ctx);
+    public fun compare_cards_and_use(game: Game, deck: Deck, ctx: &mut TxContext) {
+        let (_check, i) = check_cards(game, deck, ctx);
         if (_check) {
             let card = vector::borrow(&game_objects::get_cards_in_deck(&deck), i);
             use_card(game, deck, *card, ctx); 

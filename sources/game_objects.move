@@ -33,6 +33,7 @@ module local::game_objects {
         players: vector<address>,
         rounds: VecMap<u8, vector<address>>,
         moves: VecMap<address, vector<Card>>,
+        all_used_cards: vector<Card>,
         //deck: VecMap<address, vector<Deck>>,
     }
 
@@ -102,9 +103,11 @@ module local::game_objects {
         assert!(get_admin(game) == tx_context::sender(ctx),
             (ENON_ADMIN_ENDING_GAME as u64));
 
-        let Game { id, admin: _, max_number_of_players: _, players: _, rounds: _, moves: _ } = game;
+        let Game { id, admin: _, max_number_of_players: _, players: _, rounds: _, moves: _, all_used_cards } = game;
 
         object::delete(id);
+
+        // TODO: find a way to delete 'place'.
     }
 
     // Makes one person the admin when the game starts. Here the new admin 
@@ -113,19 +116,24 @@ module local::game_objects {
         assert!(number_of_players > 1, (EMIN_NUMBER_OF_PLAYERS_NOT_REACHED as u64));
 
         let moves = vec_map::empty<address, vector<Card>>();
+        let game = new_game(moves, number_of_players, ctx);
+
         vec_map::insert(&mut moves, tx_context::sender(ctx), vector::empty<Card>());
 
-        transfer::transfer( 
+        transfer::transfer(game, tx_context::sender(ctx));
+    }
+
+    // Generates a new game object with fixed values.
+    fun new_game(moves: VecMap<address, vector<Card>>, players: u8, ctx: &mut TxContext): Game {
             Game {
                 id: object::new(ctx),
                 admin: tx_context::sender(ctx),
-                max_number_of_players: number_of_players,
+                max_number_of_players: players,
                 players: vector::singleton<address>(tx_context::sender(ctx)),
                 rounds: vec_map::empty<u8, vector<address>>(),
                 moves,
-            },
-            tx_context::sender(ctx),
-        );
+                all_used_cards: vector::empty<Card>(),
+            }
     }
 
     // An admin can give game control to another player.
@@ -271,6 +279,17 @@ public(friend) fun add_player(game: Game, new_player: address, ctx: &mut TxConte
     // The cards available in a player's deck are displayed.
     public(friend) fun get_cards_in_deck(self: &Deck): vector<Card> {
         self.card
+    }
+
+    // Get a copy of all cards used in game.
+    public(friend) fun get_all_used_cards(game: Game): vector<Card> {
+        get_game(game).all_used_cards
+    }
+
+    // Get the last card used in the game.
+    public(friend) fun get_last_used_card(game: Game): Card {
+        let used_cards = get_all_used_cards(game);
+        *vector::borrow<Card>(&mut used_cards, vector::length<Card>(&used_cards) - 1)
     }
 
     // The color of a specific card in the deck is displayed.
