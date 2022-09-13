@@ -32,69 +32,59 @@ module local::uno {
     const EADDRESS_IS_NOT_ADMIN_OF_ANY_GAME: u8 = 7;
     const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 9;
 
-    // Gives the player a sample of all the game information.
-    /*public fun know_game(s: &signer) {
-        event::emit(game_objects::get_game(signer::address_of(s)));
-    }*/
-
     // Gives the player information about who the admin is.
-    public fun know_admin(game: Game) {
+    public entry fun know_admin(game: Game) {
         event::emit(game_objects::get_admin(game));
     }
 
     // Gives the player a list of all the players.
-    public fun know_players(game: Game) {
+    public entry fun know_players(game: Game) {
         event::emit(game_objects::get_players(game));
     }
 
     // Gives the player the number of players in the game.
-    public fun know_number_of_players(game: Game) {
+    public entry fun know_number_of_players(game: Game) {
         event::emit(game_objects::get_number_of_players(game));
     }
 
     // Gives the player the number of rounds that have elapsed.
-    public fun know_number_of_rounds(game: Game) {
+    public entry fun know_number_of_rounds(game: Game) {
         event::emit(game_objects::get_number_of_rounds(game));
     }
 
     // Gives the player a list of all the moves that have been made.
-    public fun know_all_moves(game: Game) {
+    public entry fun know_all_moves(game: Game) {
         event::emit(game_objects::get_moves(game));
     }
 
     // Gives the player a list of all cards already used in the game.
-    public fun know_all_used_cards(game: Game) {
+    public entry fun know_all_used_cards(game: Game) {
         event::emit(game_objects::get_all_used_cards(game));
     }
 
     // Gives the player only the last card used in the game.
-    public fun know_last_card_used_in_game(game: Game) {
+    public entry fun know_last_card_used_in_game(game: Game) {
         event::emit(game_objects::get_last_used_card(game));
     }
 
-    /*// Gives the player a copy of its deck.
-    public fun know_deck(s: &signer) {
-        event::emit(game_objects::get_deck(s));
-    }*/
-
     // Gives a list of the player's cards.
-    public fun know_cards(deck: Deck) {
+    public entry fun know_cards(deck: Deck) {
         event::emit(game_objects::get_cards_in_deck(game_objects::get_deck(deck)));
     }
     
     // Gives player the number of cards it has left.
-    public fun know_number_of_cards_left(deck: Deck) {
+    public entry fun know_number_of_cards_left(deck: Deck) {
         event::emit(game_objects::get_number_of_cards(deck));
     }
 
     // Gives the player the number of cards his opponents have left.
-    public fun know_number_opponents_cards_left(_s: &signer) {
+    public entry fun know_number_opponents_cards_left(_s: &signer) {
 
     }
 
     // Adds a new player.
     // Currently only admins can call this function.
-    public fun enter_new_player(game: Game, new_player: address, ctx: &mut TxContext) {
+    public entry fun enter_new_player(game: Game, new_player: address, ctx: &mut TxContext) {
         assert!(vector::length(&game_objects::get_players(game)) < game_objects::get_max_number_of_players(game),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
         game_objects::add_player(game, new_player, ctx);
@@ -102,14 +92,14 @@ module local::uno {
 
     // Admins can make other players the current game admins.
     // There can only be one at a time.
-    public fun make_someone_an_admin(game: Game, new_admin: address, ctx: &mut TxContext) {
+    public entry fun make_someone_an_admin(game: Game, new_admin: address, ctx: &mut TxContext) {
         assert!(game_objects::is_admin(&tx_context::sender(ctx)), (ENOT_ADMIN as u64));
         game_objects::give_administration(game, new_admin);
     }
 
     // Starts a game with a defined number of players.
     // TODO: implement differently.
-    public fun new_game(number_of_players: u8, ctx: &mut TxContext) {
+    public entry fun new_game(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players <= 10, (EA_LOT_OF_PLAYERS_WANT_TO_PLAY as u64));
         let sign = tx_context::signer_(ctx);
 
@@ -121,7 +111,7 @@ module local::uno {
 
     //Lets a player quit the game. If he was the last one. UNO automatically end.
     // Admins cannot exit until they have transferred the game to another player.
-    public fun quit_game(game: Game, ctx: &mut TxContext) {
+    public entry fun quit_game(game: Game, ctx: &mut TxContext) {
         assert!(!game_objects::is_admin(&tx_context::sender(ctx)), (EADMIN_WANTS_TO_LEAVE as u64));
         game_objects::leave_game(game, ctx);
         
@@ -139,7 +129,7 @@ module local::uno {
     // The game automatically checks to see if the player has already checked that they have a card available.
     // If player didn't have one, the game will give a random one.
     // 
-    public fun check_cards(game: Game, deck: Deck, ctx: &mut TxContext): (bool, u64) {
+    public entry fun check_cards(game: Game, deck: Deck, ctx: &mut TxContext): (bool, u64) {
         assert!(game_objects::get_state(deck) == false, (ECARD_ALREADY_CHECKED as u64));
 
         let last_card_in_place = &game_objects::get_last_used_card(game);
@@ -178,7 +168,7 @@ module local::uno {
 
     // Use the card once it is known that it can be played.
     // If player has only one card left, the game will automatically shout UNO!
-    public fun use_card(game: Game, deck: Deck, card: Card, ctx: &mut TxContext) {
+    public entry fun use_card(game: Game, deck: Deck, card: Card, ctx: &mut TxContext) {
         let all_cards = &mut game_objects::get_all_used_cards(game);
 
         if(vector::is_empty(all_cards)) { game_objects::update_state(deck, true); };
@@ -207,7 +197,7 @@ module local::uno {
     }
 
     // Use compare_cards and use_cards one after the other
-    public fun compare_cards_and_use(game: Game, deck: Deck, ctx: &mut TxContext) {
+    public entry fun compare_cards_and_use(game: Game, deck: Deck, ctx: &mut TxContext) {
         let (_check, i) = check_cards(game, deck, ctx);
         if (_check) {
             let card = vector::borrow(&game_objects::get_cards_in_deck(&deck), i);
