@@ -65,8 +65,8 @@ module local::game_objects {
 
     // Changes to true if the player has already checked that they have a card available to play 
     // and to false if the person has already thrown or does not have a card available to play.
-    public(friend) fun update_state(addr: address, stat: bool) acquires Deck {
-        let status = vec_map::get_mut(&mut borrow_global_mut<Deck>(addr).state, &ascii::string(b"Checked"));
+    public(friend) fun update_state(deck: Deck, stat: bool) {
+        let status = vec_map::get_mut(&mut deck.state, &ascii::string(b"Checked"));
         *status = stat;
     }
 
@@ -155,13 +155,13 @@ public(friend) fun add_player(game: Game, new_player: address, ctx: &mut TxConte
     let all_players = get_players(game);
     let new_moves = get_moves(game);
 
-    transfer::transfer(new_deck(game, new_player, ctx), new_player);
+    transfer::transfer(new_deck(game, ctx), new_player);
     vector::push_back(&mut all_players, new_player);
     vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
 }
 
     // A new deck is created with all available attributes. Exactly 7 random cards will be given to play.
-    public(friend) fun new_deck(game: Game, new_player: address, ctx: &mut TxContext): Deck {
+    public(friend) fun new_deck(game: Game, ctx: &mut TxContext): Deck {
         let i = 0u8;
         let state = vec_map::empty<String, bool>();
         vec_map::insert<String, bool>(&mut state, ascii::string(b"Checked"), false);
@@ -175,7 +175,7 @@ public(friend) fun add_player(game: Game, new_player: address, ctx: &mut TxConte
         };
 
         while( i < 7 ) {
-            vector::push_back( &mut deck.card, generate_random_card(deck, ctx) )
+            vector::push_back(&mut deck.card, generate_random_card(deck, ctx))
         };
 
         deck
