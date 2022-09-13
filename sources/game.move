@@ -101,12 +101,9 @@ module local::uno {
     // TODO: implement differently.
     public entry fun new_game(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players <= 10, (EA_LOT_OF_PLAYERS_WANT_TO_PLAY as u64));
-        let sign = tx_context::signer_(ctx);
 
+        // Transfers a new game object to the admin and gives him a new deck.
         game_objects::be_the_game_admin_at_start(number_of_players, ctx);
-
-        //TODO: check 'starting_deck' ownership.
-        let starting_deck = game_objects::new_deck(signer::address_of(sign), ctx);
     }
 
     //Lets a player quit the game. If he was the last one. UNO automatically end.

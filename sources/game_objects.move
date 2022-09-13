@@ -115,9 +115,11 @@ module local::game_objects {
 
         let moves = vec_map::empty<address, vector<Card>>();
         let game = new_game(moves, number_of_players, ctx);
+        let deck = new_deck(&game, ctx);
 
         vec_map::insert(&mut moves, tx_context::sender(ctx), vector::empty<Card>());
 
+        transfer::transfer(deck, tx_context::sender(ctx));
         transfer::transfer(game, tx_context::sender(ctx));
     }
 
@@ -161,13 +163,13 @@ public(friend) fun add_player(game: Game, new_player: address, ctx: &mut TxConte
     let all_players = get_players(game);
     let new_moves = get_moves(game);
 
-    transfer::transfer(new_deck(game, ctx), new_player);
+    transfer::transfer(new_deck(&game, ctx), new_player);
     vector::push_back(&mut all_players, new_player);
     vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
 }
 
     // A new deck is created with all available attributes. Exactly 7 random cards will be given to play.
-    public(friend) fun new_deck(game: Game, ctx: &mut TxContext): Deck {
+    public(friend) fun new_deck(game: &Game, ctx: &mut TxContext): Deck {
         let i = 0u8;
         let state = vec_map::empty<String, bool>();
         vec_map::insert<String, bool>(&mut state, ascii::string(b"Checked"), false);
@@ -225,8 +227,8 @@ public(friend) fun add_player(game: Game, new_player: address, ctx: &mut TxConte
     }
     
     // Unwraps the inner ID inside the UID of the game.
-    public(friend) fun get_game_id(game: Game): ID {
-        object::id(get_game(game))
+    public(friend) fun get_game_id(game: &Game): ID {
+        object::id(game)
     }
 
     // Rounds are displayed.
