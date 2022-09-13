@@ -103,11 +103,9 @@ module local::game_objects {
         assert!(get_admin(game) == tx_context::sender(ctx),
             (ENON_ADMIN_ENDING_GAME as u64));
 
-        let Game { id, admin: _, max_number_of_players: _, players: _, rounds: _, moves: _, all_used_cards } = game;
+        let Game { id, admin: _, max_number_of_players: _, players: _, rounds: _, moves: _, all_used_cards: _ } = game;
 
         object::delete(id);
-
-        // TODO: find a way to delete 'place'.
     }
 
     // Makes one person the admin when the game starts. Here the new admin 
