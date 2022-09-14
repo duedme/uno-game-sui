@@ -19,10 +19,10 @@ module local::uno {
     use std::ascii::{Self, String};
     use local::game_objects::{Self, Game, Deck, Card};
     use local::colors::Color;
-    use std::signer;
     use std::vector;
     use sui::event;
     use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
 
     const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
     const EADMIN_WANTS_TO_LEAVE: u8 = 3;
@@ -112,7 +112,9 @@ module local::uno {
         assert!(!game_objects::is_admin(&tx_context::sender(ctx)), (EADMIN_WANTS_TO_LEAVE as u64));
         game_objects::leave_game(&game, ctx);
         
-        if(vector::length(&game_objects::get_players(&game)) == 0) { game_objects::end_game(game, ctx); }
+        if(vector::length(&game_objects::get_players(&game)) == 0) /*{ game_objects::end_game(game, ctx); }*/ {
+            transfer::freeze_object(game)
+        }
     }
     // Simulate saying "UNO!" when playing the classic game._check
     public fun shout_UNO(deck: &Deck) {
