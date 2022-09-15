@@ -61,6 +61,14 @@ module local::game_objects {
         //special_cards: bool
     }
 
+    struct Emit has copy, drop {
+        addr: address,
+        vec_addr: vector<address>,
+        vec_card: vector<Card>,
+        uint_8bit: u8,
+        addr_vec_card_vecmap: VecMap<address, vector<Card>>,
+        str: String,
+    }
 
     // === `Basic` functions ===
 
@@ -92,8 +100,8 @@ module local::game_objects {
     // Wins and finishes the game by dropping the struct 'Game'.
     public(friend) fun win(/*game: Game, */cards: vector<Card>, _ctx: &mut TxContext) {
         let game_won_and_finished: String = ascii::string(b"You won the game!");
-        event::emit(cards);
-        event::emit(game_won_and_finished);
+        event::emit<vector<Card>>(cards);
+        event::emit<String>(game_won_and_finished);
 
         //end_game(game, ctx);
     }
@@ -101,8 +109,8 @@ module local::game_objects {
     // Tells the player he played his cards and the game continues.
     public(friend) fun game_continues(cards: vector<Card>) {
         let player_played_card: String = ascii::string(b"You played a card!");
-        event::emit(cards);
-        event::emit(player_played_card);
+        event::emit<vector<Card>>(cards);
+        event::emit<String>(player_played_card);
     }
 
     /*// Deletes the current 'Game' struct.
@@ -125,7 +133,7 @@ module local::game_objects {
         vec_map::insert(&mut moves, tx_context::sender(ctx), vector::empty<Card>());
 
         transfer::transfer(deck, tx_context::sender(ctx));
-        transfer::transfer(game, tx_context::sender(ctx));
+        transfer::share_object(game);
     }
 
     // Generates a new game object with fixed values.
@@ -222,11 +230,6 @@ public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxCont
 
     // === `Getter` functions ===
 
-    /*// Mutable 'Game' structure is shown to a player.
-    public(friend) fun get_game(game: &Game): &Game {
-        game
-    }*/
-        
         // It is consulted in 'Game' what is the maximum number of players in the game.
     public(friend) fun get_max_number_of_players(game: &Game): u64 {
         (game.max_number_of_players as u64)
