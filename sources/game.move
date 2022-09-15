@@ -21,8 +21,7 @@ module local::uno {
     use local::colors::Color;
     use std::vector;
     use sui::event;
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
+    use sui::tx_context::TxContext;
 
     const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
     const EADMIN_WANTS_TO_LEAVE: u8 = 3;
@@ -92,8 +91,7 @@ module local::uno {
 
     // Admins can make other players the current game admins.
     // There can only be one at a time.
-    public entry fun make_someone_an_admin(game: Game, new_admin: address, ctx: &mut TxContext) {
-        assert!(game_objects::is_admin(&tx_context::sender(ctx)), (ENOT_ADMIN as u64));
+    public entry fun make_someone_an_admin(game: Game, new_admin: address, _ctx: &mut TxContext) {
         game_objects::give_administration(game, new_admin);
     }
 
@@ -108,13 +106,8 @@ module local::uno {
 
     //Lets a player quit the game. If he was the last one. UNO automatically end.
     // Admins cannot exit until they have transferred the game to another player.
-    public entry fun quit_game(game: Game, ctx: &mut TxContext) {
-        assert!(!game_objects::is_admin(&tx_context::sender(ctx)), (EADMIN_WANTS_TO_LEAVE as u64));
-        game_objects::leave_game(&game, ctx);
-        
-        if(vector::length(&game_objects::get_players(&game)) == 0) /*{ game_objects::end_game(game, ctx); }*/ {
-            transfer::freeze_object(game)
-        }
+    public entry fun quit_game(game: &Game, ctx: &mut TxContext) {
+        game_objects::leave_game(game, ctx);
     }
     // Simulate saying "UNO!" when playing the classic game._check
     public fun shout_UNO(deck: &Deck) {
@@ -166,8 +159,8 @@ module local::uno {
 
     // Use the card once it is known that it can be played.
     // If player has only one card left, the game will automatically shout UNO!
-    public entry fun use_card(game: Game, deck: &mut Deck, card: Card, ctx: &mut TxContext) {
-        let all_cards = &mut game_objects::get_all_used_cards(&game);
+    public entry fun use_card(game: &Game, deck: &mut Deck, card: Card, ctx: &mut TxContext) {
+        let all_cards = &mut game_objects::get_all_used_cards(game);
 
         if(vector::is_empty(all_cards)) { game_objects::update_state(deck, true); };
         assert!(game_objects::get_state(deck) == true, (ECARD_NOT_CHECKED as u64));
@@ -179,7 +172,7 @@ module local::uno {
         vector::push_back(all_cards, card);
 
         // Finds and deletes the used card of player's current deck
-        let last_card_in_deck = game_objects::get_last_used_card(&game);
+        let last_card_in_deck = game_objects::get_last_used_card(game);
         let (_, i) = vector::index_of(&cards_in_deck, &last_card_in_deck);
         vector::remove(&mut cards_in_deck, i);
 
@@ -187,18 +180,20 @@ module local::uno {
 
         if(vector::length(&cards_in_deck) == 1) { shout_UNO(deck); };
 
-        if(vector::length(&cards_in_deck) == 0) { game_objects::win(game, cards_in_deck, ctx); }
+        if(vector::length(&cards_in_deck) == 0) { game_objects::win(/*game, */cards_in_deck, ctx); }
         else {
             game_objects::update_state(deck, false);
 
-            game_objects::check_participation(&game, ctx);
+            game_objects::check_participation(game, ctx);
+
+            game_objects::game_continues(cards_in_deck);
         };
 
     }
 
     // Use compare_cards and use_cards one after the other
-    public entry fun compare_cards_and_use(game: Game, deck: &mut Deck, ctx: &mut TxContext) {
-        let (_check, i) = check_cards(&game, deck, ctx);
+    public entry fun compare_cards_and_use(game: &Game, deck: &mut Deck, ctx: &mut TxContext) {
+        let (_check, i) = check_cards(game, deck, ctx);
         if (_check) {
             let card = vector::borrow(&game_objects::get_cards_in_deck(deck), i);
             use_card(game, deck, *card, ctx); 

@@ -90,23 +90,28 @@ module local::game_objects {
     }
 
     // Wins and finishes the game by dropping the struct 'Game'.
-    public(friend) fun win(game: Game, cards: vector<Card>, ctx: &mut TxContext) {
+    public(friend) fun win(/*game: Game, */cards: vector<Card>, _ctx: &mut TxContext) {
         let game_won_and_finished: String = ascii::string(b"You won the game!");
         event::emit(cards);
         event::emit(game_won_and_finished);
 
-        end_game(game, ctx);
+        //end_game(game, ctx);
     }
 
-    // Deletes the current 'Game' struct.
+    // Tells the player he played his cards and the game continues.
+    public(friend) fun game_continues(cards: vector<Card>) {
+        let player_played_card: String = ascii::string(b"You played a card!");
+        event::emit(cards);
+        event::emit(player_played_card);
+    }
+
+    /*// Deletes the current 'Game' struct.
     public(friend) fun end_game(game: Game, ctx: &mut TxContext)  {
         assert!(get_admin(&game) == tx_context::sender(ctx),
             (ENON_ADMIN_ENDING_GAME as u64));
 
-        let Game { id, admin: _, max_number_of_players: _, players: _, rounds: _, moves: _, all_used_cards: _ } = game;
-
-        object::delete(id);
-    }
+        transfer::freeze_object(game);
+    }*/
 
     // Makes one person the admin when the game starts. Here the new admin 
     // will be given a 'Game' structure with its address as identifier.
@@ -144,9 +149,9 @@ module local::game_objects {
     // Confirm that someone has the structure 'Game' and is therefore
     // the admin of the game.
     // TODO: check implementation and if method is necessary.
-    public(friend) fun is_admin(addr: &address): bool {
+    /*public(friend) fun is_admin(addr: &address): bool {
         exists<Game>(*addr)
-    }
+    }*/
     
     // A player will be removed from the player list in 'Game'.
     public(friend) fun leave_game(game: &Game, ctx: &mut TxContext) {
@@ -183,7 +188,8 @@ public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxCont
         };
 
         while( i < 7 ) {
-            vector::push_back(&mut deck.card, generate_random_card(&deck, ctx))
+            let random_card = generate_random_card(&deck, ctx);
+            vector::push_back(&mut deck.card, random_card)
         };
 
         deck
@@ -197,7 +203,7 @@ public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxCont
     }
 
     // Generates random cards. There are 9 for each color (red, green, blue and yellow).
-    fun generate_random_card(deck: &Deck, ctx: &mut TxContext): Card {
+    fun generate_random_card(deck: &Deck, _ctx: &mut TxContext): Card {
         let hashed = hash::sha2_256(object::id_bytes(deck));
         let card_number = vector::pop_back(&mut hashed);
         card_number = card_number % 36;
@@ -289,7 +295,8 @@ public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxCont
     // Get the last card used in the game.
     public(friend) fun get_last_used_card(game: &Game): Card {
         let used_cards = get_all_used_cards(game);
-        *vector::borrow<Card>(&mut used_cards, vector::length<Card>(&used_cards) - 1)
+        let number_of_used_cards = vector::length<Card>(&used_cards) - 1;
+        *vector::borrow<Card>(&mut used_cards, number_of_used_cards)
     }
 
     // The color of a specific card in the deck is displayed.
