@@ -61,6 +61,8 @@ module local::game_objects {
         //special_cards: bool
     }
 
+    // Emit wraps any object with copy and drop abilities. Its only use is to be used
+    // in 'emit_object()' and 'emit_wrapper()' methods.
     struct Emit<T: copy + drop> has copy, drop {
         t: T,
     }
@@ -148,13 +150,6 @@ module local::game_objects {
     public(friend) fun give_administration(game: Game, addr: address) {
         transfer::transfer(game, addr);
     }
-
-    // Confirm that someone has the structure 'Game' and is therefore
-    // the admin of the game.
-    // TODO: check implementation and if method is necessary.
-    /*public(friend) fun is_admin(addr: &address): bool {
-        exists<Game>(*addr)
-    }*/
     
     // A player will be removed from the player list in 'Game'.
     public(friend) fun leave_game(game: &Game, ctx: &mut TxContext) {
@@ -225,10 +220,13 @@ public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxCont
 
     // === `Emit` function ===
 
+    // Emits the 'Emit' object wrapping enything with copy and drop abilities.
     public(friend) fun emit_object<T: copy + drop>(t: T) {
         event::emit<Emit<T>>(emit_wrapper(t));
     }
 
+    // Wraps any type with copy and drop abilities into 'Emit' object. Meant to be used
+    // with 'emit_object()' method.
     public fun emit_wrapper<T: copy + drop>(t: T): Emit<T> {
         Emit<T>{ t }
     }
@@ -274,11 +272,6 @@ public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxCont
     public(friend) fun get_number_of_rounds(game: &Game): u8 {
         (vec_map::size(&get_rounds(game)) as u8)
     }
-    
-    // A player is shown its deck.
-    /*public(friend) fun get_deck(deck: Deck): &Deck  {
-        &deck
-    }*/
 
     // Gives the number of remaining cards of the signer.
     public(friend) fun get_number_of_cards(deck: &Deck): u8 {
