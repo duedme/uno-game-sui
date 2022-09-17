@@ -17,11 +17,11 @@
 
 module local::uno {
     use std::ascii::{Self, String};
-    use local::game_objects::{Self, Deck, Card};
+    use local::game_objects::{Self, Game, Deck, Card};
     use local::colors::Color;
-    use std::signer;
     use std::vector;
-    use sui::event;
+    use sui::tx_context::TxContext;
+    use sui::vec_map::VecMap;
 
     const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
     const EADMIN_WANTS_TO_LEAVE: u8 = 3;
@@ -31,110 +31,102 @@ module local::uno {
     const EADDRESS_IS_NOT_ADMIN_OF_ANY_GAME: u8 = 7;
     const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 9;
 
-    // Simulates the place on the table where the played cards are left.
-    struct Place has key {
-        last_card: vector<Card>,
-    }
-
-    // Gives the player a sample of all the game information.
-    public fun know_game(s: &signer) {
-        event::emit(game_objects::get_game(signer::address_of(s)));
-    }
-
     // Gives the player information about who the admin is.
-    public fun know_admin(s: &signer) {
-        event::emit(game_objects::get_admin(signer::address_of(s)));
+    public entry fun know_admin(game: &Game) {
+        game_objects::emit_object<address>(game_objects::get_admin(game));
     }
 
     // Gives the player a list of all the players.
-    public fun know_players(s: &signer) {
-        event::emit(game_objects::get_players(s));
+    public entry fun know_players(game: &Game) {
+        game_objects::emit_object<vector<address>>(game_objects::get_players(game));
     }
 
     // Gives the player the number of players in the game.
-    public fun know_number_of_players(s: &signer) {
-        event::emit(game_objects::get_number_of_players(s));
+    public entry fun know_number_of_players(game: &Game) {
+        game_objects::emit_object<u8>(game_objects::get_number_of_players(game));
     }
 
     // Gives the player the number of rounds that have elapsed.
-    public fun know_number_of_rounds(s: &signer) {
-        event::emit(game_objects::get_number_of_rounds(s));
+    public entry fun know_number_of_rounds(game: &Game) {
+        game_objects::emit_object<u8>(game_objects::get_number_of_rounds(game));
     }
 
     // Gives the player a list of all the moves that have been made.
-    public fun know_all_moves(s: &signer) {
-        event::emit(game_objects::get_moves(s));
+    public entry fun know_all_moves(game: &Game) {
+        game_objects::emit_object<VecMap<address, vector<Card>>>(game_objects::get_moves(game));
     }
 
-    // Gives the player a copy of its deck.
-    public fun know_deck(s: &signer) {
-        event::emit(game_objects::get_deck(s));
+    // Gives the player a list of all cards already used in the game.
+    public entry fun know_all_used_cards(game: &Game) {
+        game_objects::emit_object<vector<Card>>(game_objects::get_all_used_cards(game));
+    }
+
+    // Gives the player only the last card used in the game.
+    public entry fun know_last_card_used_in_game(game: &Game) {
+        game_objects::emit_object<Card>(game_objects::get_last_used_card(game));
     }
 
     // Gives a list of the player's cards.
-    public fun know_cards(s: &signer) {
-        event::emit(game_objects::get_cards_in_deck(&game_objects::get_deck(s)));
+    public entry fun know_cards(deck: &Deck) {
+        game_objects::emit_object<vector<Card>>(game_objects::get_cards_in_deck(deck));
     }
     
     // Gives player the number of cards it has left.
-    public fun know_number_of_cards_left(s: &signer) {
-        event::emit(game_objects::get_number_of_cards(s));
+    public entry fun know_number_of_cards_left(deck: &Deck) {
+        game_objects::emit_object<u8>(game_objects::get_number_of_cards(deck));
     }
 
     // Gives the player the number of cards his opponents have left.
-    public fun know_number_opponents_cards_left(_s: &signer) {
+    // TODO: find a way to implement this function.
+    public entry fun know_number_opponents_cards_left() {
 
     }
 
     // Adds a new player.
     // Currently only admins can call this function.
-    public fun enter_new_player(s: &signer, games_admin: address) {
-        assert!(vector::length(&game_objects::get_players(s)) < game_objects::get_max_number_of_players(s),
+    public entry fun enter_new_player(game: &Game, new_player: address, ctx: &mut TxContext) {
+        assert!(vector::length(&game_objects::get_players(game)) < game_objects::get_max_number_of_players(game),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
-        game_objects::add_player(s, games_admin);
+        game_objects::add_player(game, new_player, ctx);
     }
 
     // Admins can make other players the current game admins.
     // There can only be one at a time.
-    public fun make_someone_an_admin(s: &signer, new_admin: address) {
-        assert!(game_objects::is_admin(&signer::address_of(s)), (ENOT_ADMIN as u64));
-        game_objects::give_administration(s, new_admin);
+    public entry fun make_someone_an_admin(game: Game, new_admin: address, _ctx: &mut TxContext) {
+        game_objects::give_administration(game, new_admin);
     }
 
     // Starts a game with a defined number of players.
-    public fun new_game(number_of_players: u8, s: &signer) {
+    // TODO: implement differently.
+    public entry fun new_game(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players <= 10, (EA_LOT_OF_PLAYERS_WANT_TO_PLAY as u64));
-        game_objects::be_the_game_admin_at_start(s, number_of_players);
-        let starting_deck = game_objects::new_deck(s, signer::address_of(s));
-        event::emit(starting_deck);
+
+        // Transfers a new game object to the admin and gives him a new deck.
+        game_objects::be_the_game_admin_at_start(number_of_players, ctx);
     }
 
     //Lets a player quit the game. If he was the last one. UNO automatically end.
     // Admins cannot exit until they have transferred the game to another player.
-    public fun quit_game(s: &signer) {
-        assert!(!game_objects::is_admin(&signer::address_of(s)), (EADMIN_WANTS_TO_LEAVE as u64));
-        game_objects::leave_game(s);
-        
-        if(vector::length(&game_objects::get_players(s)) == 0) { game_objects::end_game(s); }
+    public entry fun quit_game(game: &Game, ctx: &mut TxContext) {
+        game_objects::leave_game(game, ctx);
     }
     // Simulate saying "UNO!" when playing the classic game._check
-    public fun shout_UNO(s: &signer) {
-        let deck = game_objects::get_deck(s);
+    public fun shout_UNO(deck: &Deck) {
         let uno: String = ascii::string(b"UNO!");
-        if (vector::length(&game_objects::get_cards_in_deck(&deck)) == 1) { event::emit(uno) }
+        if (vector::length(&game_objects::get_cards_in_deck(deck)) == 1) { 
+            game_objects::emit_object<String>(uno);
+        }
     }
 
     // Checks if player has an available card to play.
     // Factors such as the color and number of cards available in the player's deck are reviewed.
     // The game automatically checks to see if the player has already checked that they have a card available.
     // If player didn't have one, the game will give a random one.
-    // 
-    public fun check_cards(s: &signer): (bool, u64) acquires Place {
-        assert!(game_objects::get_state(signer::address_of(s)) == false, (ECARD_ALREADY_CHECKED as u64));
+    public fun check_cards(game: &Game, deck: &mut Deck, ctx: &mut TxContext): (bool, u64) {
+        assert!(game_objects::get_state(deck) == false, (ECARD_ALREADY_CHECKED as u64));
 
-        let deck: Deck = game_objects::get_deck(s);
-        let last_card = &borrow_global_mut<Place>(signer::address_of(s)).last_card;
-        let pack_of_cards: &vector<Card> = &game_objects::get_cards_in_deck(&deck);
+        let last_card_in_place = &game_objects::get_last_used_card(game);
+        let pack_of_cards: &vector<Card> = &game_objects::get_cards_in_deck(deck);
         let color_pack: vector<Color> = vector::empty<Color>();
         let number_pack: vector<u8> = vector::empty<u8>();
         let _check: bool = false;
@@ -142,68 +134,71 @@ module local::uno {
 
 
         while(i < vector::length(pack_of_cards)) {
-            vector::push_back(&mut color_pack, game_objects::get_index_color(&deck, i));
-            vector::push_back(&mut number_pack, game_objects::get_index_number(&deck, i));
+            vector::push_back(&mut color_pack, game_objects::get_index_color(deck, i));
+            vector::push_back(&mut number_pack, game_objects::get_index_number(deck, i));
             i = i + 1;
         };
 
-        (_check, i) = vector::index_of<Color>(&color_pack, &game_objects::get_color(vector::borrow(last_card, vector::length(last_card) - 1)));
+        (_check, i) = vector::index_of<Color>(&color_pack, &game_objects::get_color(last_card_in_place));
         if (_check == true) {
-            game_objects::update_state(signer::address_of(s), true);
-            event::emit(*pack_of_cards);
+            game_objects::update_state(deck, true);
+            game_objects::emit_object<vector<Card>>(*pack_of_cards);
             return (_check, i)
         };
 
-        (_check, i) = vector::index_of<u8>(&number_pack, &game_objects::get_number(vector::borrow(last_card, vector::length(last_card) - 1)));
+        (_check, i) = vector::index_of<u8>(&number_pack, &game_objects::get_number(last_card_in_place));
         if (_check == true) {
-            game_objects::update_state(signer::address_of(s), true);
-            event::emit(*pack_of_cards);
+            game_objects::update_state(deck, true);
+            game_objects::emit_object<vector<Card>>(*pack_of_cards);
             return (_check, i)
         };
 
         // Since player has no matching cards, he will be given a new random one.
-        game_objects::add_new_card_to_deck(s);
+        game_objects::add_new_card_to_deck(deck, ctx);
 
         (_check, i)
     }
 
     // Use the card once it is known that it can be played.
     // If player has only one card left, the game will automatically shout UNO!
-    public fun use_card(s: &signer, card: Card) acquires Place {
-        let last_card = &mut borrow_global_mut<Place>(signer::address_of(s)).last_card;
+    public fun use_card(game: &Game, deck: &mut Deck, card: Card, ctx: &mut TxContext) {
+        let all_cards = &mut game_objects::get_all_used_cards(game);
 
-        if(vector::is_empty(last_card)) { game_objects::update_state(signer::address_of(s), true); };
-        assert!(game_objects::get_state(signer::address_of(s)) == true, (ECARD_NOT_CHECKED as u64));
+        if(vector::is_empty(all_cards)) { game_objects::update_state(deck, true); };
+        assert!(game_objects::get_state(deck) == true, (ECARD_NOT_CHECKED as u64));
 
-        let length_of_place = vector::length(last_card);
-        let deck: Deck = game_objects::get_deck(s);
-        let cards_in_deck = game_objects::get_cards_in_deck(&deck);
+        //let length_of_place = vector::length(all_cards);
+        let cards_in_deck = game_objects::get_cards_in_deck(deck);
         
         // adds the card in the deck to the pile of used ones
-        vector::push_back(last_card, card);
+        vector::push_back(all_cards, card);
 
         // Finds and deletes the used card of player's current deck
-        let (_, i) = vector::index_of(&cards_in_deck, vector::borrow(last_card, length_of_place - 1));
+        let last_card_in_deck = game_objects::get_last_used_card(game);
+        let (_, i) = vector::index_of(&cards_in_deck, &last_card_in_deck);
         vector::remove(&mut cards_in_deck, i);
 
-        event::emit(game_objects::get_cards_in_deck(&deck));
+        game_objects::emit_object<vector<Card>>(game_objects::get_cards_in_deck(deck));
 
-        if(vector::length(&cards_in_deck) == 1) { shout_UNO(s); };
+        if(vector::length(&cards_in_deck) == 1) { shout_UNO(deck); };
 
-        if(vector::length(&cards_in_deck) == 0) { game_objects::win(s, cards_in_deck); };
+        if(vector::length(&cards_in_deck) == 0) { game_objects::win(/*game, */cards_in_deck, ctx); }
+        else {
+            game_objects::update_state(deck, false);
 
-        game_objects::update_state(signer::address_of(s), false);
+            game_objects::check_participation(game, ctx);
 
-        game_objects::check_participation(s);
+            game_objects::game_continues(cards_in_deck);
+        };
+
     }
 
     // Use compare_cards and use_cards one after the other
-    public fun compare_cards_and_use(s: &signer) acquires Place {
-        let (_check, i) = check_cards(s);
+    public entry fun compare_cards_and_use(game: &Game, deck: &mut Deck, ctx: &mut TxContext) {
+        let (_check, i) = check_cards(game, deck, ctx);
         if (_check) {
-            let deck: Deck = game_objects::get_deck(s);
-            let card = vector::borrow(&game_objects::get_cards_in_deck(&deck), i);
-            use_card(s, *card); 
+            let card = vector::borrow(&game_objects::get_cards_in_deck(deck), i);
+            use_card(game, deck, *card, ctx); 
         }
     }
 }

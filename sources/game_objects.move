@@ -9,12 +9,12 @@ module local::game_objects {
     use local::colors::{Self, Color};
     use std::ascii::{Self, String};
     use std::vector;
-    use std::signer;
     use std::hash;
-    use sui::object::{Self, ID};
+    use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::vec_map::{Self, VecMap};
     use sui::event;
+    use sui::tx_context::{Self, TxContext};
 
     const EMIN_NUMBER_OF_PLAYERS_NOT_REACHED: u8 = 2;
     const ENON_ADMIN_ENDING_GAME: u8 = 7;
@@ -26,19 +26,20 @@ module local::game_objects {
 
     // Figure that houses a game ID, the administrator's address, a maximum number of players, the players,
     // the players who have thrown in each round and the cards that they have used.
-    struct Game has key, copy, drop {
-        id: ID,
+    struct Game has key {
+        id: UID,
         admin: address,
         max_number_of_players: u8,
         players: vector<address>,
         rounds: VecMap<u8, vector<address>>,
         moves: VecMap<address, vector<Card>>,
+        all_used_cards: vector<Card>,
         //deck: VecMap<address, vector<Deck>>,
     }
 
     // The basic shape of a card that has a number and a color is housed.
     // There is also a pending option to implement special cards in the future.
-    struct Card has key, store, copy, drop {
+    struct Card has store, copy, drop {
         number: u8,
         color: Color,
         //special: bool,
@@ -51,8 +52,8 @@ module local::game_objects {
     // listed (in the classic game there can only be 7). 
     // Finally, there is a state that registers if a person has already checked that 
     // they have the card available to play in the next turn. 
-    struct Deck has key, store, copy, drop{
-        id: ID,
+    struct Deck has key, store {
+        id: UID,
         id_from_game: ID,
         card: vector<Card>,
         amount: u8,
@@ -60,121 +61,138 @@ module local::game_objects {
         //special_cards: bool
     }
 
+    struct Emit<T: copy + drop> has copy, drop {
+        t: T,
+    }
 
     // === `Basic` functions ===
 
     // Changes to true if the player has already checked that they have a card available to play 
     // and to false if the person has already thrown or does not have a card available to play.
-    public(friend) fun update_state(addr: address, stat: bool) acquires Deck {
-        let status = vec_map::get_mut(&mut borrow_global_mut<Deck>(addr).state, &ascii::string(b"Checked"));
+    public(friend) fun update_state(deck: &mut Deck, stat: bool) {
+        let status = vec_map::get_mut(&mut deck.state, &ascii::string(b"Checked"));
         *status = stat;
     }
 
     // Records that a person has already played in the current round.
-    public(friend) fun check_participation(s: &signer) acquires Game {
-        let game_rounds = get_mut_game(signer::address_of(s)).rounds;
+    public(friend) fun check_participation(game: &Game, ctx: &mut TxContext) {
+        let game_rounds = get_rounds(game);
         let round_number = (vec_map::size(&game_rounds) as u8);
 
         if(vec_map::is_empty<u8, vector<address>>(&game_rounds)) {
-            vec_map::insert(&mut game_rounds, 1, vector::singleton(signer::address_of(s)));
+            vec_map::insert(&mut game_rounds, 1, vector::singleton(tx_context::sender(ctx)));
         } else {
             let addresses = vec_map::get_mut(&mut game_rounds, &round_number);
-            vector::push_back(addresses, signer::address_of(s));
+            vector::push_back(addresses, tx_context::sender(ctx));
         };
 
         let participations = vec_map::get(&mut game_rounds, &round_number);
-        if(vector::length(participations) == vector::length(&get_players(s))) {
+        if(vector::length(participations) == vector::length(&get_players(game))) {
             vec_map::insert(&mut game_rounds, round_number + 1, vector::empty<address>());
         }
     }
 
     // Wins and finishes the game by dropping the struct 'Game'.
-    public(friend) fun win(s: &signer, cards: vector<Card>) acquires Game {
+    public(friend) fun win(/*game: Game, */cards: vector<Card>, _ctx: &mut TxContext) {
         let game_won_and_finished: String = ascii::string(b"You won the game!");
-        event::emit(cards);
-        event::emit(game_won_and_finished);
+        emit_object<vector<Card>>(cards);
+        emit_object<String>(game_won_and_finished);
 
-        end_game(s);
+        //end_game(game, ctx);
     }
 
-    // Drops the current 'Game' struct.
-    public(friend) fun end_game(s: &signer) acquires Game {
-        assert!(get_mut_game(signer::address_of(s)).admin == signer::address_of(s),
+    // Tells the player he played his cards and the game continues.
+    public(friend) fun game_continues(cards: vector<Card>) {
+        let player_played_card: String = ascii::string(b"You played a card!");
+        emit_object<vector<Card>>(cards);
+        emit_object<String>(player_played_card);
+    }
+
+    /*// Deletes the current 'Game' struct.
+    public(friend) fun end_game(game: Game, ctx: &mut TxContext)  {
+        assert!(get_admin(&game) == tx_context::sender(ctx),
             (ENON_ADMIN_ENDING_GAME as u64));
 
-        get_mut_game(signer::address_of(s));
-    }
+        transfer::freeze_object(game);
+    }*/
 
     // Makes one person the admin when the game starts. Here the new admin 
     // will be given a 'Game' structure with its address as identifier.
-    public(friend) fun be_the_game_admin_at_start(s: &signer, number_of_players: u8) {
+    public(friend) fun be_the_game_admin_at_start(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players > 1, (EMIN_NUMBER_OF_PLAYERS_NOT_REACHED as u64));
 
         let moves = vec_map::empty<address, vector<Card>>();
-        vec_map::insert(&mut moves, signer::address_of(s), vector::empty<Card>());
+        let game = new_game(moves, number_of_players, ctx);
+        let deck = new_deck(&game, ctx);
 
-        move_to(s, 
+        vec_map::insert(&mut moves, tx_context::sender(ctx), vector::empty<Card>());
+
+        transfer::transfer(deck, tx_context::sender(ctx));
+        transfer::share_object(game);
+    }
+
+    // Generates a new game object with fixed values.
+    fun new_game(moves: VecMap<address, vector<Card>>, players: u8, ctx: &mut TxContext): Game {
             Game {
-                id: object::id_from_address(signer::address_of(s)),
-                admin: signer::address_of(s),
-                max_number_of_players: number_of_players,
-                players: vector::singleton<address>(signer::address_of(s)),
+                id: object::new(ctx),
+                admin: tx_context::sender(ctx),
+                max_number_of_players: players,
+                players: vector::singleton<address>(tx_context::sender(ctx)),
                 rounds: vec_map::empty<u8, vector<address>>(),
                 moves,
+                all_used_cards: vector::empty<Card>(),
             }
-        );
     }
 
     // An admin can give game control to another player.
-    public(friend) fun give_administration(s: &signer, addr: address) acquires Game {
-        transfer::transfer(get_mut_game(signer::address_of(s)), addr);
+    public(friend) fun give_administration(game: Game, addr: address) {
+        transfer::transfer(game, addr);
     }
 
     // Confirm that someone has the structure 'Game' and is therefore
     // the admin of the game.
-    public(friend) fun is_admin(addr: &address): bool {
+    // TODO: check implementation and if method is necessary.
+    /*public(friend) fun is_admin(addr: &address): bool {
         exists<Game>(*addr)
-    }
+    }*/
     
     // A player will be removed from the player list in 'Game'.
-    public(friend) fun leave_game(s: &signer) acquires Game {
-        let players = get_players(s);
-        let j: u64;
-        
-        (_, j) = vector::index_of(&players, &signer::address_of(s));
+    public(friend) fun leave_game(game: &Game, ctx: &mut TxContext) {
+    let players = get_players(game);
+    let j: u64;
+    
+    (_, j) = vector::index_of(&players, &tx_context::sender(ctx));
 
-        vector::remove(&mut players, j);
-    }
+    vector::remove(&mut players, j);
+}
 
-    // An admin can add someone to the player list and give them a deck.
-    public(friend) fun add_player(s: &signer, new_player: address) acquires Game, Deck {
-        assert!(exists<Game>(signer::address_of(s)), (ESIGNER_IS_NOT_ADMIN_OF_GAME as u64));
+// An admin can add someone to the player list and give them a deck.
+public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxContext) {
+    let all_players = get_players(game);
+    let new_moves = get_moves(game);
 
-        let all_players = get_players(s);
-        let new_moves = get_moves(s);
-
-        transfer::transfer(new_deck(s, new_player), new_player);
-        vector::push_back(&mut all_players, new_player);
-        vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
-        transfer::share_object(get_mut_game(new_player));
-    }
+    transfer::transfer(new_deck(game, ctx), new_player);
+    vector::push_back(&mut all_players, new_player);
+    vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
+}
 
     // A new deck is created with all available attributes. Exactly 7 random cards will be given to play.
-    public(friend) fun new_deck(s: &signer, new_player: address): Deck acquires Deck, Game {
+    public(friend) fun new_deck(game: &Game, ctx: &mut TxContext): Deck {
         let i = 0u8;
         let state = vec_map::empty<String, bool>();
         vec_map::insert<String, bool>(&mut state, ascii::string(b"Checked"), false);
 
         let deck = Deck {
-            id: object::id_from_address(new_player),
-            id_from_game: get_mut_game(signer::address_of(s)).id,
+            id: object::new(ctx),
+            id_from_game: get_game_id(game),
             card: vector::empty<Card>(),
             amount: 7,
             state,
         };
 
         while( i < 7 ) {
-            vector::push_back( &mut deck.card, generate_random_card(s) )
+            let random_card = generate_random_card(&deck, ctx);
+            vector::push_back(&mut deck.card, random_card)
         };
 
         deck
@@ -182,13 +200,14 @@ module local::game_objects {
 
     // Summons a new random card and appends it to players deck.
     // It is usually used when the player cannot play more cards than he owns.
-    public(friend) fun add_new_card_to_deck(s: &signer) acquires Deck {
-        vector::push_back(&mut get_cards_in_deck(&get_deck(s)), generate_random_card(s));
+    public(friend) fun add_new_card_to_deck(deck: &Deck, ctx: &mut TxContext) {
+        vector::push_back(&mut get_cards_in_deck(deck)
+            , generate_random_card(deck, ctx));
     }
 
     // Generates random cards. There are 9 for each color (red, green, blue and yellow).
-    fun generate_random_card(s: &signer): Card acquires Deck {
-        let hashed = hash::sha2_256(object::id_bytes(&get_deck(s)));
+    fun generate_random_card(deck: &Deck, _ctx: &mut TxContext): Card {
+        let hashed = hash::sha2_256(object::id_bytes(deck));
         let card_number = vector::pop_back(&mut hashed);
         card_number = card_number % 36;
         card_number = card_number + 1;
@@ -204,70 +223,88 @@ module local::game_objects {
         }
     }
 
+    // === `Emit` function ===
+
+    public(friend) fun emit_object<T: copy + drop>(t: T) {
+        event::emit<Emit<T>>(emit_wrapper(t));
+    }
+
+    public fun emit_wrapper<T: copy + drop>(t: T): Emit<T> {
+        Emit<T>{ t }
+    }
+
     // === `Getter` functions ===
 
-    // Tells a player who the admin is.
-    public(friend) fun get_admin(addr: address): address acquires Game {
-        borrow_global<Game>(addr).admin
-    }
-
-    // Gives the number of players in the game.
-    public(friend) fun get_number_of_players(s: &signer): u8 acquires Game {
-        (vector::length(&get_players(s)) as u8)
-    }
-
-    // Gives the number of rounds so far.
-    public(friend) fun get_number_of_rounds(s: &signer): u8 acquires Game {
-        (vec_map::size(&get_rounds(signer::address_of(s))) as u8)
-    }
-
-    // Gives the number of remaining cards of the signer.
-    public(friend) fun get_number_of_cards(s: &signer):u8 acquires Deck {
-        (vector::length(&get_cards_in_deck(&get_deck(s))) as u8)
-    }
-
-    // It tells if a player can throw or if he doesn't have the right cards.
-    public(friend) fun get_state(addr: address): bool acquires Deck {
-        *vec_map::get(&borrow_global<Deck>(addr).state, &ascii::string(b"Checked"))
-    }
-
     // It is consulted in 'Game' what is the maximum number of players in the game.
-    public(friend) fun get_max_number_of_players(s: &signer): u64 acquires Game {
-        (borrow_global_mut<Game>(signer::address_of(s)).max_number_of_players as u64)
+    public(friend) fun get_max_number_of_players(game: &Game): u64 {
+        (game.max_number_of_players as u64)
     }
     
-    // A player is shown their deck.
-    public(friend) fun get_deck(s: &signer): Deck acquires Deck {
-        *borrow_global<Deck>(signer::address_of(s))
-    }
-
-    public(friend) fun get_game(addr: address): Game acquires Game {
-        *borrow_global<Game>(addr)
-    }
-
-    // Mutable 'Game' structure is shown to a player.
-    public(friend) fun get_mut_game(addr: address): Game acquires Game {
-        *borrow_global_mut<Game>(addr)
+    // Unwraps the inner ID inside the UID of the game.
+    public(friend) fun get_game_id(game: &Game): ID {
+        object::id(game)
     }
 
     // Rounds are displayed.
-    public(friend) fun get_rounds(addr: address): VecMap<u8, vector<address>> acquires Game {
-        get_mut_game(addr).rounds
+    public(friend) fun get_rounds(game: &Game): VecMap<u8, vector<address>> {
+        game.rounds
     }
 
     // Player list is displayed.
-    public(friend) fun get_players(s: &signer): vector<address> acquires Game {
-        borrow_global<Game>(signer::address_of(s)).players
+    public(friend) fun get_players(game: &Game): vector<address> {
+        game.players
     }
 
     // The list of cards used by each player is displayed.
-    public(friend) fun get_moves(s: &signer): VecMap<address, vector<Card>> acquires Game {
-        borrow_global<Game>(signer::address_of(s)).moves
+    public(friend) fun get_moves(game: &Game): VecMap<address, vector<Card>> {
+        game.moves
+    }
+
+    // Tells a player who the admin is.
+    public(friend) fun get_admin(game: &Game): address {
+        game.admin
+    }
+
+    // Gives the number of players in the game.
+    public(friend) fun get_number_of_players(game: &Game): u8 {
+        (vector::length(&get_players(game)) as u8)
+    }
+
+    // Gives the number of rounds so far.
+    public(friend) fun get_number_of_rounds(game: &Game): u8 {
+        (vec_map::size(&get_rounds(game)) as u8)
+    }
+    
+    // A player is shown its deck.
+    /*public(friend) fun get_deck(deck: Deck): &Deck  {
+        &deck
+    }*/
+
+    // Gives the number of remaining cards of the signer.
+    public(friend) fun get_number_of_cards(deck: &Deck): u8 {
+        (vector::length(&get_cards_in_deck(deck)) as u8)
+    }
+
+    // It tells if a player can throw or if he doesn't have the right cards.
+    public(friend) fun get_state(deck: &Deck): bool {
+        *vec_map::get(&deck.state, &ascii::string(b"Checked"))
     }
 
     // The cards available in a player's deck are displayed.
     public(friend) fun get_cards_in_deck(self: &Deck): vector<Card> {
         self.card
+    }
+
+    // Get a copy of all cards used in game.
+    public(friend) fun get_all_used_cards(game: &Game): vector<Card> {
+        game.all_used_cards
+    }
+
+    // Get the last card used in the game.
+    public(friend) fun get_last_used_card(game: &Game): Card {
+        let used_cards = get_all_used_cards(game);
+        let number_of_used_cards = vector::length<Card>(&used_cards) - 1;
+        *vector::borrow<Card>(&mut used_cards, number_of_used_cards)
     }
 
     // The color of a specific card in the deck is displayed.
