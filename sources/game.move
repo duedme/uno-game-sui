@@ -20,7 +20,6 @@ module local::uno {
     use local::game_objects::{Self, Game, Deck, Card};
     use local::colors::Color;
     use std::vector;
-    use sui::event;
     use sui::tx_context::TxContext;
     use sui::vec_map::VecMap;
 
@@ -34,50 +33,51 @@ module local::uno {
 
     // Gives the player information about who the admin is.
     public entry fun know_admin(game: &Game) {
-        event::emit<address>(game_objects::get_admin(game));
+        game_objects::emit_object<address>(game_objects::get_admin(game));
     }
 
     // Gives the player a list of all the players.
     public entry fun know_players(game: &Game) {
-        event::emit<vector<address>>(game_objects::get_players(game));
+        game_objects::emit_object<vector<address>>(game_objects::get_players(game));
     }
 
     // Gives the player the number of players in the game.
     public entry fun know_number_of_players(game: &Game) {
-        event::emit<u8>(game_objects::get_number_of_players(game));
+        game_objects::emit_object<u8>(game_objects::get_number_of_players(game));
     }
 
     // Gives the player the number of rounds that have elapsed.
     public entry fun know_number_of_rounds(game: &Game) {
-        event::emit<u8>(game_objects::get_number_of_rounds(game));
+        game_objects::emit_object<u8>(game_objects::get_number_of_rounds(game));
     }
 
     // Gives the player a list of all the moves that have been made.
     public entry fun know_all_moves(game: &Game) {
-        event::emit<VecMap<address, vector<Card>>>(game_objects::get_moves(game));
+        game_objects::emit_object<VecMap<address, vector<Card>>>(game_objects::get_moves(game));
     }
 
     // Gives the player a list of all cards already used in the game.
     public entry fun know_all_used_cards(game: &Game) {
-        event::emit<vector<Card>>(game_objects::get_all_used_cards(game));
+        game_objects::emit_object<vector<Card>>(game_objects::get_all_used_cards(game));
     }
 
     // Gives the player only the last card used in the game.
     public entry fun know_last_card_used_in_game(game: &Game) {
-        event::emit<Card>(game_objects::get_last_used_card(game));
+        game_objects::emit_object<Card>(game_objects::get_last_used_card(game));
     }
 
     // Gives a list of the player's cards.
     public entry fun know_cards(deck: &Deck) {
-        event::emit<vector<Card>>(game_objects::get_cards_in_deck(deck));
+        game_objects::emit_object<vector<Card>>(game_objects::get_cards_in_deck(deck));
     }
     
     // Gives player the number of cards it has left.
     public entry fun know_number_of_cards_left(deck: &Deck) {
-        event::emit<u8>(game_objects::get_number_of_cards(deck));
+        game_objects::emit_object<u8>(game_objects::get_number_of_cards(deck));
     }
 
     // Gives the player the number of cards his opponents have left.
+    // TODO: find a way to implement this function.
     public entry fun know_number_opponents_cards_left() {
 
     }
@@ -113,14 +113,15 @@ module local::uno {
     // Simulate saying "UNO!" when playing the classic game._check
     public fun shout_UNO(deck: &Deck) {
         let uno: String = ascii::string(b"UNO!");
-        if (vector::length(&game_objects::get_cards_in_deck(deck)) == 1) { event::emit<String>(uno) }
+        if (vector::length(&game_objects::get_cards_in_deck(deck)) == 1) { 
+            game_objects::emit_object<String>(uno);
+        }
     }
 
     // Checks if player has an available card to play.
     // Factors such as the color and number of cards available in the player's deck are reviewed.
     // The game automatically checks to see if the player has already checked that they have a card available.
     // If player didn't have one, the game will give a random one.
-    // 
     public fun check_cards(game: &Game, deck: &mut Deck, ctx: &mut TxContext): (bool, u64) {
         assert!(game_objects::get_state(deck) == false, (ECARD_ALREADY_CHECKED as u64));
 
@@ -141,14 +142,14 @@ module local::uno {
         (_check, i) = vector::index_of<Color>(&color_pack, &game_objects::get_color(last_card_in_place));
         if (_check == true) {
             game_objects::update_state(deck, true);
-            event::emit<vector<Card>>(*pack_of_cards);
+            game_objects::emit_object<vector<Card>>(*pack_of_cards);
             return (_check, i)
         };
 
         (_check, i) = vector::index_of<u8>(&number_pack, &game_objects::get_number(last_card_in_place));
         if (_check == true) {
             game_objects::update_state(deck, true);
-            event::emit<vector<Card>>(*pack_of_cards);
+            game_objects::emit_object<vector<Card>>(*pack_of_cards);
             return (_check, i)
         };
 
@@ -177,7 +178,7 @@ module local::uno {
         let (_, i) = vector::index_of(&cards_in_deck, &last_card_in_deck);
         vector::remove(&mut cards_in_deck, i);
 
-        event::emit<vector<Card>>(game_objects::get_cards_in_deck(deck));
+        game_objects::emit_object<vector<Card>>(game_objects::get_cards_in_deck(deck));
 
         if(vector::length(&cards_in_deck) == 1) { shout_UNO(deck); };
 

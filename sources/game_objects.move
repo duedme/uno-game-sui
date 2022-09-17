@@ -61,13 +61,8 @@ module local::game_objects {
         //special_cards: bool
     }
 
-    struct Emit has copy, drop {
-        addr: address,
-        vec_addr: vector<address>,
-        vec_card: vector<Card>,
-        uint_8bit: u8,
-        addr_vec_card_vecmap: VecMap<address, vector<Card>>,
-        str: String,
+    struct Emit<T: copy + drop> has copy, drop {
+        t: T,
     }
 
     // === `Basic` functions ===
@@ -100,8 +95,8 @@ module local::game_objects {
     // Wins and finishes the game by dropping the struct 'Game'.
     public(friend) fun win(/*game: Game, */cards: vector<Card>, _ctx: &mut TxContext) {
         let game_won_and_finished: String = ascii::string(b"You won the game!");
-        event::emit<vector<Card>>(cards);
-        event::emit<String>(game_won_and_finished);
+        emit_object<vector<Card>>(cards);
+        emit_object<String>(game_won_and_finished);
 
         //end_game(game, ctx);
     }
@@ -109,8 +104,8 @@ module local::game_objects {
     // Tells the player he played his cards and the game continues.
     public(friend) fun game_continues(cards: vector<Card>) {
         let player_played_card: String = ascii::string(b"You played a card!");
-        event::emit<vector<Card>>(cards);
-        event::emit<String>(player_played_card);
+        emit_object<vector<Card>>(cards);
+        emit_object<String>(player_played_card);
     }
 
     /*// Deletes the current 'Game' struct.
@@ -228,9 +223,19 @@ public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxCont
         }
     }
 
+    // === `Emit` function ===
+
+    public(friend) fun emit_object<T: copy + drop>(t: T) {
+        event::emit<Emit<T>>(emit_wrapper(t));
+    }
+
+    public fun emit_wrapper<T: copy + drop>(t: T): Emit<T> {
+        Emit<T>{ t }
+    }
+
     // === `Getter` functions ===
 
-        // It is consulted in 'Game' what is the maximum number of players in the game.
+    // It is consulted in 'Game' what is the maximum number of players in the game.
     public(friend) fun get_max_number_of_players(game: &Game): u64 {
         (game.max_number_of_players as u64)
     }
