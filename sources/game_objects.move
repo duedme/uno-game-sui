@@ -1,8 +1,10 @@
-// This works in conjunction with the 'game' and 'colors' module. 
-// Here are the most basic functionalities of the card game.
-// Structures such as 'Game' are implemented, which hosts all
-// the necessary information regarding players and shots, among others.
+/// This works in conjunction with the 'game' and 'colors' module.
+/// Here are the most basic functionalities of the card game.
+/// Structures such as 'Game' are implemented, which hosts all
+/// the necessary information regarding players and shots, among others.
 
+/// @author Daniel Espejel
+/// @title game_objects
 module local::game_objects {
     friend local::uno;
 
@@ -20,67 +22,85 @@ module local::game_objects {
     const ENON_ADMIN_ENDING_GAME: u8 = 7;
     const ESIGNER_IS_NOT_ADMIN_OF_GAME: u8 = 8;
 
-    // NFT with unique id of the game linked with special Decks so that previous ones do not work.
-    // The'rounds' slot is type-vector which stores a Card-type vector. Its intention is to record all the
-    // moves of the players.
-
-    // Figure that houses a game ID, the administrator's address, a maximum number of players, the players,
-    // the players who have thrown in each round and the cards that they have used.
+    /// @notice Figure that represents the whole game and its processes.
+    ///     It houses a game ID, the administrator's address, a maximum number of players, the players,
+    ///     the players who have thrown in each round and the cards that they have used.
     struct Game has key {
         id: UID,
+        /// The address of the admin. Tipically the person who started the game.
         admin: address,
+        /// Maximum number of players to have in the game. This is set at the beggining of the.
         max_number_of_players: u8,
+        /// Dynamic list of all players in the game.
         players: vector<address>,
+        /// A map that takes a round as a key and a list of players who have participated in the current round
+        /// as a value.
         rounds: VecMap<u8, vector<address>>,
+        /// A map that takes a players's address as a key and a list of used cards as value.
         moves: VecMap<address, vector<Card>>,
+        /// simulates where a person places a card they just played. The color or number of the last card in the
+        /// list is taken as a reference for the next player's draw.
         all_used_cards: vector<Card>,
         //deck: VecMap<address, vector<Deck>>,
     }
 
-    // The basic shape of a card that has a number and a color is housed.
-    // There is also a pending option to implement special cards in the future.
+    /// @notice The basic shape of a card that has a number and a color is housed.
+    ///     There is also a pending option to implement special cards in the future.
     struct Card has store, copy, drop {
+        /// The number of the card. Tipically between 0 and 9.
         number: u8,
+        /// Color of the card. The colors are blue, gree, yellow and red.
         color: Color,
         //special: bool,
     }
     
-    // The deck has an ID in case the player is in different games.
-    // There is a special ID that is the same as the current 'Game' session has,
-    // so that it can't be used after the game ends. 
-    // Here the cards that the player has available and the quantity of them are
-    // listed (in the classic game there can only be 7). 
-    // Finally, there is a state that registers if a person has already checked that 
-    // they have the card available to play in the next turn. 
+    /// @notice The deck has an ID in case the player is in different games.
+    ///     There is a special ID that is the same as the current 'Game' session has,
+    ///     so that it can't be used after the game ends. 
+    ///     Here the cards that the player has available and the quantity of them are
+    ///     listed (in the classic game there can only be 7). 
+    ///     Finally, there is a state that registers if a person has already checked that 
+    ///     they have the card available to play in the next turn. 
     struct Deck has key, store {
         id: UID,
+        /// The inner ID inside the UID of the 'Game' object. Meant to serve as a reference
+        /// to the game the deck belongs to.
         id_from_game: ID,
+        /// Dynamic list of cards available to a player.
         card: vector<Card>,
+        /// The amount of cards there will be from the beginning. This number is always 7.
         amount: u8,
+        /// Map matching the string "Checked" with a bool statement indicating whether the
+        /// player has a card available.
         state: VecMap<String, bool>,
         //special_cards: bool
     }
 
-    // Emit wraps any object with copy and drop abilities. Its only use is to be used
-    // in 'emit_object()' and 'emit_wrapper()' methods.
+    /// @notice Emit wraps any object with copy and drop abilities. Its only use is to be used
+    ///     in 'emit_object()' and 'emit_wrapper()' methods.
     struct Emit<T: copy + drop> has copy, drop {
         t: T,
     }
 
     // === `Basic` functions ===
 
-    // Changes to true if the player has already checked that they have a card available to play 
-    // and to false if the person has already thrown or does not have a card available to play.
+    /// @notice Changes to true if the player has already checked that they have a card available for the round 
+    ///     and to false if the person has already thrown or does not have a card available to play.
+    /// @param deck is the object Deck owned by an user.
+    /// @param takes a boolean. True if has an available card.
     public(friend) fun update_state(deck: &mut Deck, stat: bool) {
         let status = vec_map::get_mut(&mut deck.state, &ascii::string(b"Checked"));
         *status = stat;
     }
 
-    // Records that a person has already played in the current round.
+    /// @notice Stores an users address if they have played their turn in the current round.
+    /// @param game is the shared object that stores all game information.
+    /// @param ctx saves the transaction's context. Will be used to takes signers and addresses.
     public(friend) fun check_participation(game: &Game, ctx: &mut TxContext) {
         let game_rounds = get_rounds(game);
         let round_number = (vec_map::size(&game_rounds) as u8);
 
+        // Saves the player's address in different treatment depending on the number of rounds.
         if(vec_map::is_empty<u8, vector<address>>(&game_rounds)) {
             vec_map::insert(&mut game_rounds, 1, vector::singleton(tx_context::sender(ctx)));
         } else {
@@ -88,6 +108,7 @@ module local::game_objects {
             vector::push_back(addresses, tx_context::sender(ctx));
         };
 
+        // If all players have participated, game goes to the next round.
         let participations = vec_map::get(&mut game_rounds, &round_number);
         if(vector::length(participations) == vector::length(&get_players(game))) {
             vec_map::insert(&mut game_rounds, round_number + 1, vector::empty<address>());
