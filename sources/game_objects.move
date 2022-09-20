@@ -95,9 +95,8 @@ module local::game_objects {
     }
 
     // Wins and finishes the game by dropping the struct 'Game'.
-    public(friend) fun win(/*game: Game, */cards: vector<Card>, _ctx: &mut TxContext) {
+    public(friend) fun win(/*game: Game, */ _ctx: &mut TxContext) {
         let game_won_and_finished: String = ascii::string(b"You won the game!");
-        emit_object<vector<Card>>(cards);
         emit_object<String>(game_won_and_finished);
 
         //end_game(game, ctx);
