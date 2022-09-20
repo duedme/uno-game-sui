@@ -1,6 +1,10 @@
 *Warning: this is experimental code that could change in future versions.*
 
-# UNO
+<p align="center">
+    <br>
+    <img src="docs/imgs/uno_sui.png" width="400"/>
+    <br>
+</p>
 
 UNO based card game.
 
