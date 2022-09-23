@@ -1,20 +1,21 @@
-// The basic functionalities of a card game based on UNO.
-//
-// The way to start playing is to use the new_game() function which 
-// will give the game management and a deck of cards automatically.
-// When deciding the number of players in the game, 
-// remember that there can only be up to 10 of them.
-//
-// Other players can join later by calling enter_new_player(). 
-// Currently only the admin can call that method.
-//
-// This module works with the help of game_assets which carries 
-// important methods and structures for the game.
-//
-// TODO: Check that the card to which the status was applied is really the one to be played.
-// TODO: implement special cards. For example: +2, +4, etc.
-// TODO: finish know_number_opponents_cards_left method.
+/// The basic functionalities of a card game based on UNO.
+///
+/// The way to start playing is to use the new_game() function which 
+/// will give the game management and a deck of cards automatically.
+/// When deciding the number of players in the game, 
+/// remember that there can only be up to 10 of them.
+///
+/// Other players can join later by calling enter_new_player(). 
+/// Currently only the admin can call that method.
+///
+/// This module works with the help of game_assets which carries 
+/// important methods and structures for the game.
+///
+/// @dev TODO: Check that the card to which the status was applied is really the one to be played.
+/// @dev TODO: implement special cards. For example: +2, +4, etc.
 
+/// @author Daniel Espejel
+/// @title uno
 module local::uno {
     use std::ascii::{Self, String};
     use local::game_objects::{Self, Game, Deck, Card};
@@ -31,73 +32,88 @@ module local::uno {
     const EADDRESS_IS_NOT_ADMIN_OF_ANY_GAME: u8 = 7;
     const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 9;
 
-    // Gives the player information about who the admin is.
+    /// @notice Gives the player information about who the admin is.
+    /// @param game shared between players.
     public entry fun know_admin(game: &Game) {
         game_objects::emit_object<address>(game_objects::get_admin(game));
     }
 
-    // Gives the player a list of all the players.
+    /// @notice Gives the player a list of all the players.
+    /// @param game shared between players.
     public entry fun know_players(game: &Game) {
         game_objects::emit_object<vector<address>>(game_objects::get_players(game));
     }
 
-    // Gives the player the number of players in the game.
+    /// @notice Gives the player the number of players in the game.
+    /// @param game shared between players.
     public entry fun know_number_of_players(game: &Game) {
         game_objects::emit_object<u8>(game_objects::get_number_of_players(game));
     }
 
-    // Gives the player the number of rounds that have elapsed.
+    /// @notice Gives the player the number of rounds that have elapsed.
+    /// @param game shared between players.
     public entry fun know_number_of_rounds(game: &Game) {
         game_objects::emit_object<u8>(game_objects::get_number_of_rounds(game));
     }
 
-    // Gives the player a list of all the moves that have been made.
+    /// @notice Gives the player a list of all the moves that have been made.
+    /// @param game shared between players.
     public entry fun know_all_moves(game: &Game) {
         game_objects::emit_object<VecMap<address, vector<Card>>>(game_objects::get_moves(game));
     }
 
-    // Gives the player a list of all cards already used in the game.
+    /// @notice Gives the player a list of all cards already used in the game.
+    /// @param game shared between players.
     public entry fun know_all_used_cards(game: &Game) {
         game_objects::emit_object<vector<Card>>(game_objects::get_all_used_cards(game));
     }
 
-    // Gives the player only the last card used in the game.
+    /// @notice Gives the player a list of all cards already used in the game.
+    /// @param game shared between players.
     public entry fun know_last_card_used_in_game(game: &Game) {
         game_objects::emit_object<Card>(game_objects::get_last_used_card(game));
     }
 
-    // Gives a list of the player's cards.
+    /// @notice Gives a list of the player's cards.
+    /// @param deck owned by the player calling the method.
     public entry fun know_cards(deck: &Deck) {
         game_objects::emit_object<vector<Card>>(game_objects::get_cards_in_deck(deck));
     }
     
-    // Gives player the number of cards it has left.
+    /// @notice Gives player the number of cards it has left.
+    /// @param deck owned by the player calling the method.
     public entry fun know_number_of_cards_left(deck: &Deck) {
         game_objects::emit_object<u8>(game_objects::get_number_of_cards(deck));
     }
 
-    // Gives the player the number of cards his opponents have left.
-    // TODO: find a way to implement this function.
+    /// @notice Gives the player the number of cards his opponents have left.
+    /// @dev TODO: find a way to implement this function.
     public entry fun know_number_opponents_cards_left() {
 
     }
 
-    // Adds a new player.
-    // Currently only admins can call this function.
+    /// @notice Adds a new player.
+    ///     Currently only admins can call this function.
+    /// @para game shared between players.
+    /// @param new_player is the address the user that will enter the game.
+    /// @dev TODO: check about admin.
     public entry fun enter_new_player(game: &Game, new_player: address, ctx: &mut TxContext) {
         assert!(vector::length(&game_objects::get_players(game)) < game_objects::get_max_number_of_players(game),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
         game_objects::add_player(game, new_player, ctx);
     }
 
-    // Admins can make other players the current game admins.
-    // There can only be one at a time.
+    /// @notice Admins can make other players the current game admins.
+    ///     There can only be one at a time.
+    /// @dev TODO: check admin functions.
     public entry fun make_someone_an_admin(game: Game, new_admin: address, _ctx: &mut TxContext) {
         game_objects::give_administration(game, new_admin);
     }
 
-    // Starts a game with a defined number of players.
-    // TODO: implement differently.
+    /// @notice Starts a game with a defined number of players.
+    /// @param number_of_players will be the max number of players allowed in the game.
+    /// @param ctx is the context of the transaction. Will later be used to pass address.
+    /// @dev TODO: check admin functions.
     public entry fun new_game(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players <= 10, (EA_LOT_OF_PLAYERS_WANT_TO_PLAY as u64));
 
@@ -105,12 +121,17 @@ module local::uno {
         game_objects::be_the_game_admin_at_start(number_of_players, ctx);
     }
 
-    //Lets a player quit the game. If he was the last one. UNO automatically end.
-    // Admins cannot exit until they have transferred the game to another player.
+    /// @notice Lets a player quit the game. If he was the last one. UNO automatically end.
+    ///     Admins cannot exit until they have transferred the game to another player.
+    /// @param game shared between players.
+    /// @param ctx is the context of the transaction. Will later be used to get an address.
+    /// @dev TODO: Check admin functions.
     public entry fun quit_game(game: &Game, ctx: &mut TxContext) {
         game_objects::leave_game(game, ctx);
     }
-    // Simulate saying "UNO!" when playing the classic game._check
+
+    /// @notice Simulate saying "UNO!" when playing the classic game.
+    /// @param deck owned by the player calling the method.
     public fun shout_UNO(deck: &Deck) {
         let uno: String = ascii::string(b"UNO!");
         if (vector::length(&game_objects::get_cards_in_deck(deck)) == 1) { 
@@ -118,10 +139,16 @@ module local::uno {
         }
     }
 
-    // Checks if player has an available card to play.
-    // Factors such as the color and number of cards available in the player's deck are reviewed.
-    // The game automatically checks to see if the player has already checked that they have a card available.
-    // If player didn't have one, the game will give a random one.
+    /// @notice Checks if player has an available card to play.
+    ///     Factors such as the color and number of cards available in the player's deck are reviewed.
+    ///     The game automatically checks to see if the player has already checked that they have a card available.
+    ///     If player didn't have one, the game will give a random one.
+    /// @param game shared between players.
+    /// @param deck owned by the player calling the method. Will inspect deck to check for available cards.
+    /// @param ctx is the context of the transaction.
+    /// @return tuple bool and u64 representing if a card is available and where.
+    /// @dev TODO: Check if TxContext is really needen here.
+    /// @dev TODO: Find a way to skip return values (maybe with emit function).
     public fun check_cards(game: &Game, deck: &mut Deck, ctx: &mut TxContext): (bool, u64) {
         assert!(game_objects::get_state(deck) == false, (ECARD_ALREADY_CHECKED as u64));
 
@@ -159,8 +186,12 @@ module local::uno {
         (_check, i)
     }
 
-    // Use the card once it is known that it can be played.
-    // If player has only one card left, the game will automatically shout UNO!
+    /// @notice Use the card once it is known that it can be played.
+    ///     If player has only one card left, the game will automatically shout UNO!
+    /// @param game shared between players.
+    /// @param deck owned by the player calling the method. A card will be removed from it.
+    /// @param card is the item the player will use to play the game.
+    /// @param ctx is the context of the transaction. Will later be used to get the user's address.
     public fun use_card(game: &Game, deck: &mut Deck, card: Card, ctx: &mut TxContext) {
         let all_cards = &mut game_objects::get_all_used_cards(game);
 
@@ -193,7 +224,10 @@ module local::uno {
 
     }
 
-    // Use compare_cards and use_cards one after the other
+    /// @notice Use compare_cards and use_cards one after the other.
+    /// @param game shared between players.
+    /// @param deck owned by the player calling the method.
+    /// @param ctx is the context of the transaction. Will be used as param for check_cards and use_card.
     public entry fun compare_cards_and_use(game: &Game, deck: &mut Deck, ctx: &mut TxContext) {
         let (_check, i) = check_cards(game, deck, ctx);
         if (_check) {
