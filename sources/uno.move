@@ -213,7 +213,7 @@ module local::uno {
 
         if(vector::length(&cards_in_deck) == 1) { shout_UNO(deck); };
 
-        if(vector::length(&cards_in_deck) == 0) { game_objects::win(/*game, */cards_in_deck, ctx); }
+        if(vector::length(&cards_in_deck) == 0) { game_objects::win(/*game, */ctx); }
         else {
             game_objects::update_state(deck, false);
 
