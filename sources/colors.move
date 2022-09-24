@@ -1,33 +1,40 @@
-// It works in conjunction with the game_objects module and its most basic functionality 
-// is to create an RGB color system for the game cards.
+/// This works in conjunction with the game_objects module and its most basic functionality 
+/// is to create an RGB color system for the UNO! game.
 
+/// @author Daniel Espejel
+/// @title colors
 module local::colors {
 
-    // Structure that stores a vector of integers. As in the RGB system, 
-    // the first parameter describes the color red, the second green, and the third blue. 
-    // The combination of red and green is almost yellow.
+    /// @notice Structure that stores a vector of integers. As in the RGB system, 
+    ///     the first parameter describes the color red, the second green, and the third blue. 
+    /// @dev The combination of red and green is almost yellow.
     struct Color has store, copy, drop {
+        /// This will store a vector with 3 numbers. Each represents a color Red, Green, and Blue.
         configuration: vector<u8>
     }
 
     // === `Basic` functions ===
 
-    // Returns the RGB code for red.
+    /// @notice Returns the RGB code for red.
+    /// @return color object with RGB configuration of pure red.
     public fun return_red(): Color {
         Color { configuration: vector<u8>[1, 0, 0] }
     }
 
-    // Returns the RGB code for blue.
+    /// @notice Returns the RGB code for blue.
+    /// @return color object with RGB configuration of pure blue.
     public fun return_blue(): Color {
         Color { configuration: vector<u8>[0, 1, 0] }
     }
 
-    // Returns an RGB code similar to yellow.
+    /// @notice Returns an RGB code similar to yellow.
+    /// @return color object with RGB configuration close to yellow.
     public fun return_yellow(): Color {
         Color { configuration: vector<u8>[1, 1, 0] }
     }
 
-    // Returns the RGB code for green.
+    /// @notice Returns the RGB code for green.
+    /// @return color object with RGB configuration of pure green.
     public fun return_green(): Color {
         Color { configuration: vector<u8>[0, 1, 0] }
     }
