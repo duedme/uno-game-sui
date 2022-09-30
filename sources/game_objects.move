@@ -152,14 +152,13 @@ module local::game_objects {
     public(friend) fun be_the_game_admin_at_start(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players > 1, (EMIN_NUMBER_OF_PLAYERS_NOT_REACHED as u64));
 
-        let moves = vec_map::empty<address, vector<Card>>();
         // Calls a special method to create a new game.
-        let game = new_game(moves, number_of_players, ctx);
+        let game = new_game(number_of_players, ctx);
         // Calls a special method to create a new deck of cards.
         let deck = new_deck(&game, ctx);
 
         // Initializes an empty vector.
-        vec_map::insert(&mut moves, tx_context::sender(ctx), vector::empty<Card>());
+        vec_map::insert(&mut get_moves(&mut game), tx_context::sender(ctx), vector::empty<Card>());
 
         // Gives signer ownership of the new deck.
         transfer::transfer(deck, tx_context::sender(ctx));
@@ -168,17 +167,17 @@ module local::game_objects {
     }
 
     /// @notice Generates a new game object with fixed values.
-    /// @param players
-    /// @param ctx
+    /// @param players is the max number of players that will be allowed in the game.
+    /// @param ctx is the context for the transaction. Used to get signer's address.
     /// @dev remove the 'moves' param and instead manually set moves equal to a new and empty vec_map.
-    fun new_game(moves: VecMap<address, vector<Card>>, players: u8, ctx: &mut TxContext): Game {
+    fun new_game(players: u8, ctx: &mut TxContext): Game {
             Game {
                 id: object::new(ctx),
                 admin: tx_context::sender(ctx),
                 max_number_of_players: players,
                 players: vector::singleton<address>(tx_context::sender(ctx)),
                 rounds: vec_map::empty<u8, vector<address>>(),
-                moves,
+                moves: vec_map::empty<address, vector<Card>>(),
                 all_used_cards: vector::empty<Card>(),
             }
     }
