@@ -6,7 +6,6 @@
 /// remember that there can only be up to 10 of them.
 ///
 /// Other players can join later by calling enter_new_player(). 
-/// Currently only the admin can call that method.
 ///
 /// This module works with the help of game_assets which carries 
 /// important methods and structures for the game.
@@ -25,18 +24,9 @@ module local::uno {
     use sui::vec_map::VecMap;
 
     const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
-    const EADMIN_WANTS_TO_LEAVE: u8 = 3;
-    const ENOT_ADMIN: u8 = 4;
-    const ECARD_NOT_CHECKED: u8 = 5;
-    const ECARD_ALREADY_CHECKED: u8 = 6;
-    const EADDRESS_IS_NOT_ADMIN_OF_ANY_GAME: u8 = 7;
-    const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 9;
-
-    /// @notice Gives the player information about who the admin is.
-    /// @param game shared between players.
-    public entry fun know_admin(game: &Game) {
-        game_objects::emit_object<address>(game_objects::get_admin(game));
-    }
+    const ECARD_NOT_CHECKED: u8 = 3;
+    const ECARD_ALREADY_CHECKED: u8 = 4;
+    const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 5;
 
     /// @notice Gives the player a list of all the players.
     /// @param game shared between players.
@@ -93,39 +83,27 @@ module local::uno {
     }
 
     /// @notice Adds a new player.
-    ///     Currently only admins can call this function.
     /// @para game shared between players.
     /// @param new_player is the address the user that will enter the game.
-    /// @dev TODO: check about admin.
     public entry fun enter_new_player(game: &Game, new_player: address, ctx: &mut TxContext) {
         assert!(vector::length(&game_objects::get_players(game)) < game_objects::get_max_number_of_players(game),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
         game_objects::add_player(game, new_player, ctx);
     }
 
-    /// @notice Admins can make other players the current game admins.
-    ///     There can only be one at a time.
-    /// @dev TODO: check admin functions.
-    public entry fun make_someone_an_admin(game: Game, new_admin: address, _ctx: &mut TxContext) {
-        game_objects::give_administration(game, new_admin);
-    }
-
     /// @notice Starts a game with a defined number of players.
     /// @param number_of_players will be the max number of players allowed in the game.
     /// @param ctx is the context of the transaction. Will later be used to pass address.
-    /// @dev TODO: check admin functions.
     public entry fun new_game(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players <= 10, (EA_LOT_OF_PLAYERS_WANT_TO_PLAY as u64));
 
-        // Transfers a new game object to the admin and gives him a new deck.
-        game_objects::be_the_game_admin_at_start(number_of_players, ctx);
+        // Start a game that will be shared later.
+        game_objects::start(number_of_players, ctx);
     }
 
-    /// @notice Lets a player quit the game. If he was the last one. UNO automatically end.
-    ///     Admins cannot exit until they have transferred the game to another player.
+    /// @notice Lets a player quit the game.
     /// @param game shared between players.
     /// @param ctx is the context of the transaction. Will later be used to get an address.
-    /// @dev TODO: Check admin functions.
     public entry fun quit_game(game: &Game, ctx: &mut TxContext) {
         game_objects::leave_game(game, ctx);
     }
