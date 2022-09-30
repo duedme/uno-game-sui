@@ -19,16 +19,12 @@ module local::game_objects {
     use sui::tx_context::{Self, TxContext};
 
     const EMIN_NUMBER_OF_PLAYERS_NOT_REACHED: u8 = 2;
-    const ENON_ADMIN_ENDING_GAME: u8 = 7;
-    const ESIGNER_IS_NOT_ADMIN_OF_GAME: u8 = 8;
 
     /// @notice Figure that represents the whole game and its processes.
     ///     It houses a game ID, the administrator's address, a maximum number of players, the players,
     ///     the players who have thrown in each round and the cards that they have used.
     struct Game has key {
         id: UID,
-        /// The address of the admin. Tipically the person who started the game.
-        admin: address,
         /// Maximum number of players to have in the game. This is set at the beggining of the.
         max_number_of_players: u8,
         /// Dynamic list of all players in the game.
@@ -145,11 +141,10 @@ module local::game_objects {
     }
     */
 
-    /// @notice Makes one person the admin when the game starts. The game structure is later shared.
+    /// @notice Start a game that will be shared later.
     /// @param number_of_players is the max number of players a game will be allowed to have.
     /// @param ctx takes the context of the transaction. It is used to get signer and address.
-    /// @dev Erase the creation of the empty vec_map asigned to 'moves'.
-    public(friend) fun be_the_game_admin_at_start(number_of_players: u8, ctx: &mut TxContext) {
+    public(friend) fun start(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players > 1, (EMIN_NUMBER_OF_PLAYERS_NOT_REACHED as u64));
 
         // Calls a special method to create a new game.
@@ -157,7 +152,7 @@ module local::game_objects {
         // Calls a special method to create a new deck of cards.
         let deck = new_deck(&game, ctx);
 
-        // Initializes an empty vector.
+        // Initializes a map of cards linked to the sender's address.
         vec_map::insert(&mut get_moves(&mut game), tx_context::sender(ctx), vector::empty<Card>());
 
         // Gives signer ownership of the new deck.
@@ -173,7 +168,6 @@ module local::game_objects {
     fun new_game(players: u8, ctx: &mut TxContext): Game {
             Game {
                 id: object::new(ctx),
-                admin: tx_context::sender(ctx),
                 max_number_of_players: players,
                 players: vector::singleton<address>(tx_context::sender(ctx)),
                 rounds: vec_map::empty<u8, vector<address>>(),
@@ -182,13 +176,6 @@ module local::game_objects {
             }
     }
 
-    /// @notice An admin can give game control to another player.
-    /// @dev As game is being_shared, this function is deprecated (all admin methods included).
-    /// @dev TODO: Check admin functions.
-    public(friend) fun give_administration(game: Game, addr: address) {
-        transfer::transfer(game, addr);
-    }
-    
     /// @notice A player will be removed from the player list in 'Game'.
     /// @param game is the shared object that the player will be removed from.
     /// @param ctx is the context of the transaction. Used to get address of the player.
@@ -332,13 +319,6 @@ module local::game_objects {
     /// @return VecMap mapping an user's address to a list of all the cards played.
     public(friend) fun get_moves(game: &Game): VecMap<address, vector<Card>> {
         game.moves
-    }
-
-    /// @notice Tells a player who the admin is.
-    /// @param game shared between players.
-    /// @return address owned by the admin.
-    public(friend) fun get_admin(game: &Game): address {
-        game.admin
     }
 
     /// @notice Gives the number of players in the game.
