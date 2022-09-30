@@ -24,9 +24,9 @@ module local::uno {
     use sui::vec_map::VecMap;
 
     const EMAX_NUMBER_OF_PLAYERS_REACHED: u8 = 1;
-    const ECARD_NOT_CHECKED: u8 = 5;
-    const ECARD_ALREADY_CHECKED: u8 = 6;
-    const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 8;
+    const ECARD_NOT_CHECKED: u8 = 3;
+    const ECARD_ALREADY_CHECKED: u8 = 4;
+    const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 5;
 
     /// @notice Gives the player a list of all the players.
     /// @param game shared between players.
