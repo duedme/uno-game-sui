@@ -403,6 +403,8 @@ module local::game_objects {
         card.number
     }
 
+    // === `Test` functions ===
+
     #[test]
     fun test_transfer() {
         use sui::test_scenario;

@@ -214,6 +214,8 @@ module local::uno {
         }
     }
 
+    // === `Test` functions ===
+
     #[test]
     fun new_game_() {
         use local::game_objects::{Self, /*Game, Deck, Card*/};
