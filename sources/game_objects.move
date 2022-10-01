@@ -227,7 +227,8 @@ module local::game_objects {
         // Creation of random cards and given to the deck.
         while( i < 7 ) {
             let random_card = generate_random_card(&deck, ctx);
-            vector::push_back(&mut deck.card, random_card)
+            vector::push_back(&mut deck.card, random_card);
+            i = i + 1;
         };
 
         // Return deck to new player.
