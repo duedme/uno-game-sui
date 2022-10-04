@@ -3,7 +3,7 @@ name = "UNO!"
 version = "0.1.0"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "main" }  
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "devnet" }  
 
 [addresses]
 local = "0x0"
