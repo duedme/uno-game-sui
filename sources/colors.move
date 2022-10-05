@@ -4,13 +4,14 @@
 /// @author Daniel Espejel
 /// @title colors
 module local::colors {
+    use std::ascii::{Self, String};
 
     /// @notice Structure that stores a vector of integers. As in the RGB system, 
     ///     the first parameter describes the color red, the second green, and the third blue. 
     /// @dev The combination of red and green is almost yellow.
     struct Color has store, copy, drop {
         /// This will store a vector with 3 numbers. Each represents a color Red, Green, and Blue.
-        configuration: vector<u8>
+        configuration: String
     }
 
     // === `Basic` functions ===
@@ -18,24 +19,24 @@ module local::colors {
     /// @notice Returns the RGB code for red.
     /// @return color object with RGB configuration of pure red.
     public fun return_red(): Color {
-        Color { configuration: vector<u8>[1, 0, 0] }
+        Color { configuration: ascii::string(b"RED") }
     }
 
     /// @notice Returns the RGB code for blue.
     /// @return color object with RGB configuration of pure blue.
     public fun return_blue(): Color {
-        Color { configuration: vector<u8>[0, 1, 0] }
+        Color { configuration: ascii::string(b"BLUE") }
     }
 
     /// @notice Returns an RGB code similar to yellow.
     /// @return color object with RGB configuration close to yellow.
     public fun return_yellow(): Color {
-        Color { configuration: vector<u8>[1, 1, 0] }
+        Color { configuration: ascii::string(b"YELLOW") }
     }
 
     /// @notice Returns the RGB code for green.
     /// @return color object with RGB configuration of pure green.
     public fun return_green(): Color {
-        Color { configuration: vector<u8>[0, 1, 0] }
+        Color { configuration: ascii::string(b"GREEN") }
     }
 }
