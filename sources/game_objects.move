@@ -376,7 +376,7 @@ module local::game_objects {
     /// @notice The color of a specific card in the deck is displayed.
     /// @param deck owned by the player calling the method.
     /// @param i of type u64 is index of the card in the list of cards.
-    /// @return color object in the color module that contains an RGB implementation of a color.
+    /// @return color object in the color module that contains a string refering to a color.
     public(friend) fun get_index_color(deck: &Deck, i: u64): Color {
         vector::borrow(&deck.card, i).color
     }
@@ -391,7 +391,7 @@ module local::game_objects {
 
     /// @notice The color of a card is shown only by giving the card as a sample.
     /// @param card from which you want to get its color.
-    /// @return color object in the color module that contains an RGB implementation of a color.
+    /// @return color object in the color module that contains a string refering to a color.
     public(friend) fun get_color(card: &Card): Color {
         card.color
     }
