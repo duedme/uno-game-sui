@@ -524,4 +524,68 @@ module local::game_objects {
 
         transfer::transfer(deck, test_scenario::sender(scenario));
     }
+
+    #[test]
+    fun test_checks_owner() {
+        use sui::test_scenario;
+        use sui::transfer;
+        use std::vector;
+
+        let user = @0x1;
+        let i = 0u8;
+
+        let scenario = &mut test_scenario::begin(&user);
+        let id = object::new(test_scenario::ctx(scenario));
+        let game_id = object::uid_to_inner(&id);        //let deck = new_deck_(test_scenario::ctx(scenario));
+        let state = vec_map::empty<String, bool>();
+        vec_map::insert<String, bool>(&mut state, ascii::string(b"Checked"), false);
+
+
+        let deck = Deck {
+            id: id,
+            id_from_game: game_id,
+            card: vector::empty<Card>(),
+            amount: 7,
+            state,
+        };
+
+        while( i < 7 ) {
+            let random_card = generate_random_card(&deck, test_scenario::ctx(scenario));
+            vector::push_back(&mut deck.card, random_card);
+            i = i + 1;
+        };
+
+        assert!(!vector::is_empty(&deck.card), 1000);
+
+        transfer::transfer(deck, test_scenario::sender(scenario));
+
+        let deck = test_scenario::take_owned<Deck>(scenario);
+
+        transfer::transfer(deck, test_scenario::sender(scenario));
+    }
+
+    #[test]
+    fun test_add_player() {
+        use sui::test_scenario;
+        use sui::transfer;
+
+        let creator = @0x1;
+        let first_user = @0x2;
+        let last_user = @0x3;
+
+        let scenario = &mut test_scenario::begin(&creator);
+
+        let game = new_game(2, test_scenario::ctx(scenario));
+
+        add_player(&game, first_user, test_scenario::ctx(scenario));
+        
+        test_scenario::next_tx(scenario, &first_user);
+        {
+            let deck = test_scenario::take_owned<Deck>(scenario);
+            assert!(deck.id_from_game == get_game_id(&game), 10000);
+            transfer::transfer(deck, last_user);
+        };
+
+        transfer::share_object(game);
+    }
 }
