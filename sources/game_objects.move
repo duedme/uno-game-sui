@@ -272,16 +272,16 @@ module local::game_objects {
     ///     It means anything (vectors, unsigned integers, etc) that will be displayed
     ///     to the user.
     /// @dev This method maked use of private fucntion emit_wrapper().
-    public(friend) fun emit_object<T: copy + drop>(t: T) {
-        event::emit<Emit<T>>(emit_wrapper(t));
+    public(friend) fun emit_object<T: copy + drop>(object_to_know: T) {
+        event::emit<Emit<T>>(emit_wrapper(object_to_know));
     }
 
     /// @notice Wraps any type with copy and drop abilities into 'Emit' object. Meant to be used
     ///     with 'emit_object()' method.
     /// @param t of generic type that will be wrapped in 'Emit' object.
     /// @return Emit wrapping a generic T object. Only used in emit_object() method.
-    public fun emit_wrapper<T: copy + drop>(t: T): Emit<T> {
-        Emit<T>{ t }
+    public fun emit_wrapper<T: copy + drop>(wrapped_object: T): Emit<T> {
+        Emit<T>{ t: wrapped_object }
     }
 
     // === `Getter` functions ===
