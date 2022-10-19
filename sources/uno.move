@@ -29,49 +29,49 @@ module local::uno {
     const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 5;
 
     /// @notice Gives the player a list of all the players.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     public entry fun know_players(game: &Game) {
         game_objects::emit_object<vector<address>>(game_objects::get_players(game));
     }
 
     /// @notice Gives the player the number of players in the game.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     public entry fun know_number_of_players(game: &Game) {
         game_objects::emit_object<u8>(game_objects::get_number_of_players(game));
     }
 
     /// @notice Gives the player the number of rounds that have elapsed.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     public entry fun know_number_of_rounds(game: &Game) {
         game_objects::emit_object<u8>(game_objects::get_number_of_rounds(game));
     }
 
     /// @notice Gives the player a list of all the moves that have been made.
-    /// @param game shared between players.
+    /// @param game (Game)shared between players.
     public entry fun know_all_moves(game: &Game) {
         game_objects::emit_object<VecMap<address, vector<Card>>>(game_objects::get_moves(game));
     }
 
     /// @notice Gives the player a list of all cards already used in the game.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     public entry fun know_all_used_cards(game: &Game) {
         game_objects::emit_object<vector<Card>>(game_objects::get_all_used_cards(game));
     }
 
     /// @notice Gives the player a list of all cards already used in the game.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     public entry fun know_last_card_used_in_game(game: &Game) {
         game_objects::emit_object<Card>(game_objects::get_last_used_card(game));
     }
 
     /// @notice Gives a list of the player's cards.
-    /// @param deck owned by the player calling the method.
+    /// @param deck (Deck) owned by the player calling the method.
     public entry fun know_cards(deck: &Deck) {
         game_objects::emit_object<vector<Card>>(game_objects::get_cards_in_deck(deck));
     }
     
     /// @notice Gives player the number of cards it has left.
-    /// @param deck owned by the player calling the method.
+    /// @param deck (Deck) owned by the player calling the method.
     public entry fun know_number_of_cards_left(deck: &Deck) {
         game_objects::emit_object<u8>(game_objects::get_number_of_cards(deck));
     }
@@ -83,8 +83,9 @@ module local::uno {
     }
 
     /// @notice Adds a new player.
-    /// @para game shared between players.
-    /// @param new_player is the address the user that will enter the game.
+    /// @param game (Game) shared between players.
+    /// @param new_player (address) is the address the user that will enter the game.
+    /// @param ctx (TxContext) is the context of the transaction. Will later be used to pass address.
     public entry fun enter_new_player(game: &Game, new_player: address, ctx: &mut TxContext) {
         assert!(vector::length(&game_objects::get_players(game)) < game_objects::get_max_number_of_players(game),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
@@ -92,8 +93,8 @@ module local::uno {
     }
 
     /// @notice Starts a game with a defined number of players.
-    /// @param number_of_players will be the max number of players allowed in the game.
-    /// @param ctx is the context of the transaction. Will later be used to pass address.
+    /// @param number_of_players (u8) will be the max number of players allowed in the game.
+    /// @param ctx (TxContext) is the context of the transaction. Will later be used to pass address.
     public entry fun new_game(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players <= 10, (EA_LOT_OF_PLAYERS_WANT_TO_PLAY as u64));
 
@@ -102,14 +103,14 @@ module local::uno {
     }
 
     /// @notice Lets a player quit the game.
-    /// @param game shared between players.
-    /// @param ctx is the context of the transaction. Will later be used to get an address.
+    /// @param game (Game) shared between players.
+    /// @param ctx (TxContext) is the context of the transaction. Will later be used to get an address.
     public entry fun quit_game(game: &Game, ctx: &mut TxContext) {
         game_objects::leave_game(game, ctx);
     }
 
     /// @notice Simulate saying "UNO!" when playing the classic game.
-    /// @param deck owned by the player calling the method.
+    /// @param deck (Deck) owned by the player calling the method.
     public fun shout_UNO(deck: &Deck) {
         let uno: String = ascii::string(b"UNO!");
         if (vector::length(&game_objects::get_cards_in_deck(deck)) == 1) { 
@@ -121,9 +122,9 @@ module local::uno {
     ///     Factors such as the color and number of cards available in the player's deck are reviewed.
     ///     The game automatically checks to see if the player has already checked that they have a card available.
     ///     If player didn't have one, the game will give a random one.
-    /// @param game shared between players.
-    /// @param deck owned by the player calling the method. Will inspect deck to check for available cards.
-    /// @param ctx is the context of the transaction.
+    /// @param game (Game) shared between players.
+    /// @param deck (Deck) owned by the player calling the method. Will inspect deck to check for available cards.
+    /// @param ctx (TxContext) is the context of the transaction.
     /// @return tuple bool and u64 representing if a card is available and where.
     /// @dev TODO: Check if TxContext is really needen here.
     /// @dev TODO: Find a way to skip return values (maybe with emit function).
@@ -166,10 +167,10 @@ module local::uno {
 
     /// @notice Use the card once it is known that it can be played.
     ///     If player has only one card left, the game will automatically shout UNO!
-    /// @param game shared between players.
-    /// @param deck owned by the player calling the method. A card will be removed from it.
-    /// @param card is the item the player will use to play the game.
-    /// @param ctx is the context of the transaction. Will later be used to get the user's address.
+    /// @param game (Game) shared between players.
+    /// @param deck (Deck) owned by the player calling the method. A card will be removed from it.
+    /// @param card (Card) is the item the player will use to play the game.
+    /// @param ctx (TxContext) is the context of the transaction. Will later be used to get the user's address.
     public fun use_card(game: &Game, deck: &mut Deck, card: Card, ctx: &mut TxContext) {
         let all_cards = &mut game_objects::get_all_used_cards(game);
 
@@ -203,9 +204,9 @@ module local::uno {
     }
 
     /// @notice Use compare_cards and use_cards one after the other.
-    /// @param game shared between players.
-    /// @param deck owned by the player calling the method.
-    /// @param ctx is the context of the transaction. Will be used as param for check_cards and use_card.
+    /// @param game (Game) shared between players.
+    /// @param deck (Deck) owned by the player calling the method.
+    /// @param ctx (TxContext) is the context of the transaction. Will be used as param for check_cards and use_card.
     public entry fun compare_cards_and_use(game: &Game, deck: &mut Deck, ctx: &mut TxContext) {
         let (_check, i) = check_cards(game, deck, ctx);
         if (_check) {
