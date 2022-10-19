@@ -82,16 +82,16 @@ module local::game_objects {
 
     /// @notice Changes to true if the player has already checked that they have a card available for the 
     ///     round and to false if the person has already thrown or does not have a card available to play.
-    /// @param deck is the object Deck owned by an user.
-    /// @param takes a boolean. True if has an available card.
+    /// @param deck (Deck) is the object Deck owned by an user.
+    /// @param stat (bool) is true if it has an available card.
     public(friend) fun update_state(deck: &mut Deck, stat: bool) {
         let status = vec_map::get_mut(&mut deck.state, &ascii::string(b"Checked"));
         *status = stat;
     }
 
     /// @notice Stores an users address if they have played their turn in the current round.
-    /// @param game is the shared object that stores all game information.
-    /// @param ctx saves the transaction's context. Will be used to takes signers and addresses.
+    /// @param game (Game) is the shared object that stores all game information.
+    /// @param ctx (TxContext) saves the transaction's context. Will be used to takes signers and addresses.
     public(friend) fun check_participation(game: &Game, ctx: &mut TxContext) {
         let game_rounds = get_rounds(game);
         let round_number = (vec_map::size(&game_rounds) as u8);
@@ -112,7 +112,7 @@ module local::game_objects {
     }
 
     /// @notice Tells a player he has won the game.
-    /// @param _ctx has the context of the transaction. Not used explicitly in method's implementation.
+    /// @param _ctx (TxContext) has the context of the transaction. Not used explicitly in method's implementation.
     /// @dev TODO: freeze or delete game. Maybe as an optional method for when the game is 
     ///     finished (restriction).
     ///     Maybe a flag indicating whether the game is finished would be useful. It should be added 
@@ -123,7 +123,7 @@ module local::game_objects {
     }
 
     /// @notice Tells the player he played his cards and a message indicating the action.
-    /// @param cards is the remaining list of cards.
+    /// @param cards (vector<Card>) is the remaining list of cards.
     public(friend) fun game_continues(cards: vector<Card>) {
         let player_played_card: String = ascii::string(b"You played a card!");
         emit_object<vector<Card>>(cards);
@@ -142,8 +142,8 @@ module local::game_objects {
     */
 
     /// @notice Start a game that will be shared later.
-    /// @param number_of_players is the max number of players a game will be allowed to have.
-    /// @param ctx takes the context of the transaction. It is used to get signer and address.
+    /// @param number_of_players (u8) is the max number of players a game will be allowed to have.
+    /// @param ctx (TxContext) takes the context of the transaction. It is used to get signer and address.
     public(friend) fun start(number_of_players: u8, ctx: &mut TxContext) {
         assert!(number_of_players > 1, (EMIN_NUMBER_OF_PLAYERS_NOT_REACHED as u64));
 
@@ -162,8 +162,8 @@ module local::game_objects {
     }
 
     /// @notice Generates a new game object with fixed values.
-    /// @param players is the max number of players that will be allowed in the game.
-    /// @param ctx is the context for the transaction. Used to get signer's address.
+    /// @param players (u8) is the max number of players that will be allowed in the game.
+    /// @param ctx (TxContext) is the context for the transaction. Used to get signer's address.
     /// @dev remove the 'moves' param and instead manually set moves equal to a new and empty vec_map.
     fun new_game(players: u8, ctx: &mut TxContext): Game {
             Game {
@@ -177,8 +177,8 @@ module local::game_objects {
     }
 
     /// @notice A player will be removed from the player list in 'Game'.
-    /// @param game is the shared object that the player will be removed from.
-    /// @param ctx is the context of the transaction. Used to get address of the player.
+    /// @param game (Game) is the shared object that the player will be removed from.
+    /// @param ctx (TxContext) is the context of the transaction. Used to get address of the player.
     public(friend) fun leave_game(game: &Game, ctx: &mut TxContext) {
     let players = get_players(game);
     let j: u64;
@@ -190,9 +190,9 @@ module local::game_objects {
 
     /// @notice Add someone to the player list and give them a deck.
     ///     As game is shared, anyone can add anyone.
-    /// @param game is the shared object to which to player will be added.
-    /// @param new_player is the new player's address.
-    /// @param ctx is used to give a new UID (unique identifier) to the new deck.
+    /// @param game (Game) is the shared object to which to player will be added.
+    /// @param new_player (address) is the new player's address.
+    /// @param ctx (TxContext) is used to give a new UID (unique identifier) to the new deck.
     /// @dev TODO: is it right to use ctx to create an the deck's id?
     public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxContext) {
     let all_players = get_players(game);
@@ -205,8 +205,8 @@ module local::game_objects {
 
     /// @notice A new deck is created with all available attributes. Exactly 7 random cards 
     ///     will be given to play.
-    /// @param game is the shared object used to id id_from_game argument in new Deck object.
-    /// @param ctx is used to give a new UID (unique identifier) to the new deck.
+    /// @param game (Game) is the shared object used to id id_from_game argument in new Deck object.
+    /// @param ctx (TxContext)is used to give a new UID (unique identifier) to the new deck.
     /// @return Deck object given to the new player.
     /// @dev TODO: is it right to use ctx to create an the deck's id?
     public(friend) fun new_deck(game: &Game, ctx: &mut TxContext): Deck {
@@ -237,16 +237,16 @@ module local::game_objects {
 
     /// @notice Summons a new random card and appends it to players deck.
     ///     It is usually used when the player cannot play more cards than he owns.
-    /// @param deck is the owned object to which the new card is added to.
-    /// @param ctx is the context of the transaction.
+    /// @param deck (Deck) is the owned object to which the new card is added to.
+    /// @param ctx (TxContext) is the context of the transaction.
     public(friend) fun add_new_card_to_deck(deck: &Deck, ctx: &mut TxContext) {
         vector::push_back(&mut get_cards_in_deck(deck)
             , generate_random_card(deck, ctx));
     }
 
     /// @notice Generates random cards. There are 9 for each color (red, green, blue and yellow).
-    /// @param deck is the object owned by the player. Used to obtain a hash with pseudo-random numbers.
-    /// @param _ctx is the context of the transaction.
+    /// @param deck (Deck) is the object owned by the player. Used to obtain a hash with pseudo-random numbers.
+    /// @param _ctx (TxContext) is the context of the transaction.
     /// @return Card object appended to the a given deck.
     fun generate_random_card(deck: &Deck, _ctx: &mut TxContext): Card {
         let hashed = hash::sha2_256(object::id_bytes(deck));
@@ -268,7 +268,7 @@ module local::game_objects {
     // === `Emit` function ===
 
     /// @notice Emits the 'Emit' object wrapping enything with copy and drop abilities.
-    /// @param t of generic type T should always have the copy and drop abilities.
+    /// @param t (generic T) of generic type T should always have the copy and drop abilities.
     ///     It means anything (vectors, unsigned integers, etc) that will be displayed
     ///     to the user.
     /// @dev This method maked use of private fucntion emit_wrapper().
@@ -278,7 +278,7 @@ module local::game_objects {
 
     /// @notice Wraps any type with copy and drop abilities into 'Emit' object. Meant to be used
     ///     with 'emit_object()' method.
-    /// @param t of generic type that will be wrapped in 'Emit' object.
+    /// @param t (generic T) of generic type that will be wrapped in 'Emit' object.
     /// @return Emit wrapping a generic T object. Only used in emit_object() method.
     public fun emit_wrapper<T: copy + drop>(t: T): Emit<T> {
         Emit<T>{ t }
@@ -287,21 +287,21 @@ module local::game_objects {
     // === `Getter` functions ===
 
     /// @notice It is consulted in 'Game' what is the maximum number of players in the game.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// @return u64 representing the maximum number of players that could be added to the game.
     public(friend) fun get_max_number_of_players(game: &Game): u64 {
         (game.max_number_of_players as u64)
     }
     
     /// @notice Unwraps the inner ID inside the UID of the game.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// @return ID object extracted from game's unique ID (UID).
     public(friend) fun get_game_id(game: &Game): ID {
         object::id(game)
     }
 
     /// @notice Rounds are displayed.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// @return VecMap mapping the number of rounds to all the players who have played the round
     ///     at the moment of calling the function.
     public(friend) fun get_rounds(game: &Game): VecMap<u8, vector<address>> {
@@ -309,63 +309,63 @@ module local::game_objects {
     }
 
     /// @notice Player list is displayed.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// @return vector representing a dynamic list of the current players.
     public(friend) fun get_players(game: &Game): vector<address> {
         game.players
     }
 
     /// @notice The list of cards used by each player is displayed.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// @return VecMap mapping an user's address to a list of all the cards played.
     public(friend) fun get_moves(game: &Game): VecMap<address, vector<Card>> {
         game.moves
     }
 
     /// @notice Gives the number of players in the game.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// return u8 representing the number of players in the game at the moment of callig the function.
     public(friend) fun get_number_of_players(game: &Game): u8 {
         (vector::length(&get_players(game)) as u8)
     }
 
     /// @notice Gives the number of rounds so far.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// @return u8 with the number of rounds that have elapsed so far.
     public(friend) fun get_number_of_rounds(game: &Game): u8 {
         (vec_map::size(&get_rounds(game)) as u8)
     }
 
     /// @notice Gives the number of remaining cards of the signer.
-    /// @param deck owned by the player calling the method.
+    /// @param deck (Deck) owned by the player calling the method.
     /// @return u8 with the amount of remaining cards in deck.
     public(friend) fun get_number_of_cards(deck: &Deck): u8 {
         (vector::length(&get_cards_in_deck(deck)) as u8)
     }
 
     /// @notice It tells if a player can throw or if he doesn't have the right cards.
-    /// @param deck owned by the player calling the method.
+    /// @param deck (Deck) owned by the player calling the method.
     /// @return true if the player has checked he ownes a card to play.
     public(friend) fun get_state(deck: &Deck): bool {
         *vec_map::get(&deck.state, &ascii::string(b"Checked"))
     }
 
     /// @notice The cards available in a player's deck are displayed.
-    /// @param deck owned by the player calling the method.
+    /// @param deck (Deck) owned by the player calling the method.
     /// @return vector of cards representing the list of cards in the user's deck.
     public(friend) fun get_cards_in_deck(deck: &Deck): vector<Card> {
         deck.card
     }
 
     /// @notice Get a copy of all cards used in game.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// @return vector of cards representing all the cards that have been already used in game.
     public(friend) fun get_all_used_cards(game: &Game): vector<Card> {
         game.all_used_cards
     }
 
     /// @notice Get the last card used in the game.
-    /// @param game shared between players.
+    /// @param game (Game) shared between players.
     /// @return Card
     public(friend) fun get_last_used_card(game: &Game): Card {
         let used_cards = get_all_used_cards(game);
@@ -374,30 +374,30 @@ module local::game_objects {
     }
 
     /// @notice The color of a specific card in the deck is displayed.
-    /// @param deck owned by the player calling the method.
-    /// @param i of type u64 is index of the card in the list of cards.
+    /// @param deck (Deck)owned by the player calling the method.
+    /// @param i (u64) is the index of the card in the list of cards.
     /// @return color object in the color module that contains an RGB implementation of a color.
     public(friend) fun get_index_color(deck: &Deck, i: u64): Color {
         vector::borrow(&deck.card, i).color
     }
 
     /// @notice The number of a specific card in the deck is displayed.
-    /// @param deck owned by the player calling the method.
-    /// @param i of type u64 is index of the card in the list of cards.
+    /// @param deck (Deck) owned by the player calling the method.
+    /// @param i (u64) is the index of the card in the list of cards.
     /// @return u8 with the number of a card.
     public(friend) fun get_index_number(deck: &Deck, i: u64): u8 {
         vector::borrow(&deck.card, i).number
     }
 
     /// @notice The color of a card is shown only by giving the card as a sample.
-    /// @param card from which you want to get its color.
+    /// @param card (Card) from which you want to get its color.
     /// @return color object in the color module that contains an RGB implementation of a color.
     public(friend) fun get_color(card: &Card): Color {
         card.color
     }
 
     /// @notice The number of a card is shown only by giving the card as a sample.
-    /// @param card from which you want to get its color.
+    /// @param card (Card) from which you want to get its color.
     /// @return u8 with the number of a card.
     public(friend) fun get_number(card: &Card): u8 {
         card.number
