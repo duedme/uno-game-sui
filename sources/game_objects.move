@@ -141,6 +141,15 @@ module local::game_objects {
     }
     */
 
+    public(friend) fun freeze_game(game: Game) {
+        transfer::freeze_object(game);
+    }
+
+    public(friend) fun delete_game(game: Game) {
+        let Game { id, max_number_of_players: _, players: _, rounds: _, moves: _, all_used_cards: _ } = game;
+        object::delete(id);
+    }
+
     /// @notice Start a game that will be shared later.
     /// @param number_of_players (u8) is the max number of players a game will be allowed to have.
     /// @param ctx (TxContext) takes the context of the transaction. It is used to get signer and address.
