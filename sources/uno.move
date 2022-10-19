@@ -82,6 +82,14 @@ module local::uno {
 
     }
 
+    public entry fun freeze_game(game: Game) {
+        game_objects::freeze_game(game);
+    }
+
+    public entry fun delete_game(game: Game) {
+        game_objects::delete_game(game);
+    }
+
     /// @notice Adds a new player.
     /// @param game (Game) shared between players.
     /// @param new_player (address) is the address the user that will enter the game.
