@@ -37,6 +37,8 @@ module local::game_objects {
         /// simulates where a person places a card they just played. The color or number of the last card in the
         /// list is taken as a reference for the next player's draw.
         all_used_cards: vector<Card>,
+        /// Tells if a game has been won. Normally this is false.
+        won: bool,
         //deck: VecMap<address, vector<Deck>>,
     }
 
@@ -141,6 +143,19 @@ module local::game_objects {
     }
     */
 
+    /// @notice Freezes the game object. Makes impossible to mutate.
+    /// @param game (Game) is the shared object that stores all game information.
+    public(friend) fun freeze_game(game: Game) {
+        transfer::freeze_object(game);
+    }
+
+    /// @notice Deletes the game object with its ID included. Will no longer be used.
+    /// @param game (Game) is the shared object that stores all game information.
+    public(friend) fun delete_game(game: Game) {
+        let Game { id, max_number_of_players: _, players: _, rounds: _, moves: _, all_used_cards: _, won: _ } = game;
+        object::delete(id);
+    }
+
     /// @notice Start a game that will be shared later.
     /// @param number_of_players (u8) is the max number of players a game will be allowed to have.
     /// @param ctx (TxContext) takes the context of the transaction. It is used to get signer and address.
@@ -173,6 +188,7 @@ module local::game_objects {
                 rounds: vec_map::empty<u8, vector<address>>(),
                 moves: vec_map::empty<address, vector<Card>>(),
                 all_used_cards: vector::empty<Card>(),
+                won: false,
             }
     }
 
@@ -373,6 +389,10 @@ module local::game_objects {
         *vector::borrow<Card>(&mut used_cards, number_of_used_cards)
     }
 
+    public(friend) fun get_won(game: &Game): bool {
+        game.won
+    }
+
     /// @notice The color of a specific card in the deck is displayed.
     /// @param deck (Deck)owned by the player calling the method.
     /// @param i (u64) is the index of the card in the list of cards.
@@ -423,6 +443,7 @@ module local::game_objects {
                 rounds: vec_map::empty<u8, vector<address>>(),
                 moves: vec_map::empty<address, vector<Card>>(),
                 all_used_cards: vector::empty<Card>(),
+                won: false,
         },
         test_scenario::sender(scenario));
 

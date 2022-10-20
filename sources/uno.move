@@ -27,6 +27,7 @@ module local::uno {
     const ECARD_NOT_CHECKED: u8 = 3;
     const ECARD_ALREADY_CHECKED: u8 = 4;
     const EA_LOT_OF_PLAYERS_WANT_TO_PLAY: u8 = 5;
+    const ESTILL_PLAYERS_OR_GAME_NOT_WON: u8 = 6;
 
     /// @notice Gives the player a list of all the players.
     /// @param game (Game) shared between players.
@@ -80,6 +81,22 @@ module local::uno {
     /// @dev TODO: find a way to implement this function.
     public entry fun know_number_opponents_cards_left() {
 
+    }
+
+    public entry fun freeze_game(game: Game) {
+        assert!(
+            vector::is_empty(&game_objects::get_players(&game)) || game_objects::get_won(&game),
+            (ESTILL_PLAYERS_OR_GAME_NOT_WON as u64)
+        );
+        game_objects::freeze_game(game);
+    }
+
+    public entry fun delete_game(game: Game) {
+        assert!(
+            vector::is_empty(&game_objects::get_players(&game)) || game_objects::get_won(&game),
+            (ESTILL_PLAYERS_OR_GAME_NOT_WON as u64)
+        );
+        game_objects::delete_game(game);
     }
 
     /// @notice Adds a new player.
