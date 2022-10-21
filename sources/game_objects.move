@@ -432,20 +432,22 @@ module local::game_objects {
 
         let user = @0x1;
 
-        let scenario = &mut test_scenario::begin(&user);
+        let scenario = test_scenario::begin(user);
 
 
         let players = 2;
         transfer::transfer(Game {
-                id: object::new(test_scenario::ctx(scenario)),
+                id: object::new(test_scenario::ctx(&mut scenario)),
                 max_number_of_players: players,
-                players: vector::singleton<address>(test_scenario::sender(scenario)),
+                players: vector::singleton<address>(test_scenario::sender(&mut scenario)),
                 rounds: vec_map::empty<u8, vector<address>>(),
                 moves: vec_map::empty<address, vector<Card>>(),
                 all_used_cards: vector::empty<Card>(),
                 won: false,
         },
-        test_scenario::sender(scenario));
+        test_scenario::sender(&mut scenario));
+
+        test_scenario::end(scenario);
 
     }
 
@@ -456,12 +458,13 @@ module local::game_objects {
 
         let user = @0x1;
 
-        let scenario = &mut test_scenario::begin(&user);
+        let scenario = test_scenario::begin(user);
 
         let players = 2;
-        let game = new_game(players, test_scenario::ctx(scenario));
-        transfer::transfer(game, test_scenario::sender(scenario));
-    
+        let game = new_game(players, test_scenario::ctx(&mut scenario));
+        transfer::transfer(game, test_scenario::sender(&mut scenario));
+
+        test_scenario::end(scenario);
     }
 
     #[test]
@@ -471,15 +474,16 @@ module local::game_objects {
 
         let user = @0x1;
 
-        let scenario = &mut test_scenario::begin(&user);
+        let scenario = test_scenario::begin(user);
 
         let players = 2;
-        let game = new_game(players, test_scenario::ctx(scenario));
+        let game = new_game(players, test_scenario::ctx(&mut scenario));
 
         //let deck = new_deck(&game, test_scenario::ctx(scenario));
-        transfer::transfer(game, test_scenario::sender(scenario));
+        transfer::transfer(game, test_scenario::sender(&mut scenario));
         //transfer::transfer(deck, test_scenario::sender(scenario));
-        
+
+        test_scenario::end(scenario);
     }
 
     #[test_only]
@@ -520,8 +524,8 @@ module local::game_objects {
         let user = @0x1;
         let i = 0u8;
 
-        let scenario = &mut test_scenario::begin(&user);
-        let id = object::new(test_scenario::ctx(scenario));
+        let scenario = test_scenario::begin(user);
+        let id = object::new(test_scenario::ctx(&mut scenario));
         let game_id = object::uid_to_inner(&id);        //let deck = new_deck_(test_scenario::ctx(scenario));
         let state = vec_map::empty<String, bool>();
         vec_map::insert<String, bool>(&mut state, ascii::string(b"Checked"), false);
@@ -536,13 +540,15 @@ module local::game_objects {
         };
 
         while( i < 7 ) {
-            let random_card = generate_random_card(&deck, test_scenario::ctx(scenario));
+            let random_card = generate_random_card(&deck, test_scenario::ctx(&mut scenario));
             vector::push_back(&mut deck.card, random_card);
             i = i + 1;
         };
 
         assert!(!vector::is_empty(&deck.card), 1000);
 
-        transfer::transfer(deck, test_scenario::sender(scenario));
+        transfer::transfer(deck, test_scenario::sender(&mut scenario));
+
+        test_scenario::end(scenario);
     }
 }
