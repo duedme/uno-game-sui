@@ -236,18 +236,21 @@ module local::uno {
 
     #[test]
     fun new_game_() {
-        use local::game_objects::{Self, /*Game, Deck, Card*/};
+        use local::game_objects::{Game/*, Deck, Card*/};
         use sui::test_scenario;
 
         let first_player = @0xABC;
+        let second_player = @0x123;
+
         let scenario = test_scenario::begin(first_player);
 
-        game_objects::start(2, test_scenario::ctx(&mut scenario));
+        new_game(2, test_scenario::ctx(&mut scenario));
 
-//        let game = test_scenario::take_immutable<Game>(scenario);
-
-
-//        test_scenario::return_immutable(scenario, game);
+        test_scenario::next_tx(&mut scenario, second_player);
+        {
+            let game = test_scenario::take_shared<Game>(&mut scenario);
+            enter_new_player(&game, second_player, test_scenario::ctx(&mut scenario));
+        };
 
         test_scenario::end(scenario);
     }
