@@ -240,13 +240,15 @@ module local::uno {
         use sui::test_scenario;
 
         let first_player = @0xABC;
-        let scenario = &mut test_scenario::begin(&first_player);
+        let scenario = test_scenario::begin(first_player);
 
-        game_objects::start(2, test_scenario::ctx(scenario));
+        game_objects::start(2, test_scenario::ctx(&mut scenario));
 
-        let game = test_scenario::take_immutable<Game>(scenario);
+//        let game = test_scenario::take_immutable<Game>(scenario);
 
 
-        test_scenario::return_immutable(scenario, game);
+//        test_scenario::return_immutable(scenario, game);
+
+        test_scenario::end(scenario);
     }
 }
