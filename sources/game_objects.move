@@ -12,6 +12,7 @@ module local::game_objects {
     use std::ascii::{Self, String};
     use std::vector;
     use std::hash;
+    use std::option::{Self, Option};
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::vec_map::{Self, VecMap};
@@ -382,11 +383,17 @@ module local::game_objects {
 
     /// @notice Get the last card used in the game.
     /// @param game (Game) shared between players.
-    /// @return Card
-    public(friend) fun get_last_used_card(game: &Game): Card {
+    /// @return Option<Card>. It is a Card that may or may not be present.
+    public(friend) fun get_last_used_card(game: &Game): Option<Card> {
         let used_cards = get_all_used_cards(game);
         let number_of_used_cards = vector::length<Card>(&used_cards) - 1;
-        *vector::borrow<Card>(&mut used_cards, number_of_used_cards)
+
+        if(number_of_used_cards < 0) { option::none<Card>() }
+        else {
+            option::some<Card>(
+                *vector::borrow<Card>(&mut used_cards, number_of_used_cards)
+            )
+        }
     }
 
     public(friend) fun get_won(game: &Game): bool {
