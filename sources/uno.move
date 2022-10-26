@@ -241,16 +241,27 @@ module local::uno {
 
         let first_player = @0xABC;
         let second_player = @0x123;
+        let assistant_address = @0x1;
 
         let scenario = test_scenario::begin(first_player);
 
         new_game(2, test_scenario::ctx(&mut scenario));
 
         test_scenario::next_tx(&mut scenario, second_player);
-        {
-            let game = test_scenario::take_shared<Game>(&mut scenario);
-            enter_new_player(&game, second_player, test_scenario::ctx(&mut scenario));
-        };
+        
+           let game = test_scenario::take_shared<Game>(&mut scenario);
+           enter_new_player(&game, second_player, test_scenario::ctx(&mut scenario));
+
+        test_scenario::next_tx(&mut scenario, assistant_address);
+
+            let deck = test_scenario::take_from_address<Deck>(&mut scenario, second_player);
+
+        test_scenario::next_tx(&mut scenario, second_player);
+
+            check_cards(&game, &mut deck, test_scenario::ctx(&mut scenario));
+
+            test_scenario::return_shared<Game>(game);
+            test_scenario::return_to_sender<Deck>(&scenario, deck);
 
         test_scenario::end(scenario);
     }
