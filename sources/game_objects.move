@@ -383,7 +383,7 @@ module local::game_objects {
 
     /// @notice Get the last card used in the game.
     /// @param game (Game) shared between players.
-    /// @return Card
+    /// @return Option<Card>. It is a Card that may or may not be present.
     public(friend) fun get_last_used_card(game: &Game): Option<Card> {
         let used_cards = get_all_used_cards(game);
         let number_of_used_cards = vector::length<Card>(&used_cards) - 1;
