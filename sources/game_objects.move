@@ -173,6 +173,10 @@ module local::game_objects {
 
         // Gives signer ownership of the new deck.
         transfer::transfer(deck, tx_context::sender(ctx));
+
+        // Adds the player to the list of players.
+        add_player(&game, tx_context::sender(ctx), ctx);
+
         // Shares the new game.
         transfer::share_object(game);
     }
