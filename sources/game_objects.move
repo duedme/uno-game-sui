@@ -167,14 +167,9 @@ module local::game_objects {
 
         // Calls a special method to create a new game.
         let game = new_game(number_of_players, ctx);
-        // Calls a special method to create a new deck of cards.
-        let deck = new_deck(&game, ctx);
 
         // Initializes a map of cards linked to the sender's address.
         vec_map::insert(&mut get_moves(&mut game), tx_context::sender(ctx), vector::empty<Card>());
-
-        // Gives signer ownership of the new deck.
-        transfer::transfer(deck, tx_context::sender(ctx));
 
         // Adds the player to the list of players.
         add_player(&game, tx_context::sender(ctx), ctx);
