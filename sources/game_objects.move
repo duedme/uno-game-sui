@@ -72,6 +72,7 @@ module local::game_objects {
         /// Map matching the string "Checked" with a bool statement indicating whether the
         /// player has a card available.
         state: VecMap<String, bool>,
+        /// Parameter that will help make things more random while creating cards.
         random_helper: u8,
         //special_cards: bool
     }
