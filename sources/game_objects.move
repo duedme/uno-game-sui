@@ -72,6 +72,8 @@ module local::game_objects {
         /// Map matching the string "Checked" with a bool statement indicating whether the
         /// player has a card available.
         state: VecMap<String, bool>,
+        /// Parameter that will help make things more random while creating cards.
+        random_helper: u8,
         //special_cards: bool
     }
 
@@ -165,14 +167,9 @@ module local::game_objects {
 
         // Calls a special method to create a new game.
         let game = new_game(number_of_players, ctx);
-        // Calls a special method to create a new deck of cards.
-        let deck = new_deck(&game, ctx);
 
         // Initializes a map of cards linked to the sender's address.
         vec_map::insert(&mut get_moves(&mut game), tx_context::sender(ctx), vector::empty<Card>());
-
-        // Gives signer ownership of the new deck.
-        transfer::transfer(deck, tx_context::sender(ctx));
 
         // Adds the player to the list of players.
         add_player(&game, tx_context::sender(ctx), ctx);
@@ -243,11 +240,12 @@ module local::game_objects {
             card: vector::empty<Card>(),
             amount: 7,
             state,
+            random_helper: 0,
         };
 
         // Creation of random cards and given to the deck.
         while( i < 7 ) {
-            let random_card = generate_random_card(&deck, ctx);
+            let random_card = generate_random_card(&mut deck, ctx);
             vector::push_back(&mut deck.card, random_card);
             i = i + 1;
         };
@@ -260,7 +258,7 @@ module local::game_objects {
     ///     It is usually used when the player cannot play more cards than he owns.
     /// @param deck (Deck) is the owned object to which the new card is added to.
     /// @param ctx (TxContext) is the context of the transaction.
-    public(friend) fun add_new_card_to_deck(deck: &Deck, ctx: &mut TxContext) {
+    public(friend) fun add_new_card_to_deck(deck: &mut Deck, ctx: &mut TxContext) {
         vector::push_back(&mut get_cards_in_deck(deck)
             , generate_random_card(deck, ctx));
     }
@@ -269,8 +267,15 @@ module local::game_objects {
     /// @param deck (Deck) is the object owned by the player. Used to obtain a hash with pseudo-random numbers.
     /// @param _ctx (TxContext) is the context of the transaction.
     /// @return Card object appended to the a given deck.
-    fun generate_random_card(deck: &Deck, _ctx: &mut TxContext): Card {
-        let hashed = hash::sha2_256(object::id_bytes(deck));
+    fun generate_random_card(deck: &mut Deck, _ctx: &mut TxContext): Card {
+        let seed = object::id_bytes(deck);
+        
+        if(deck.random_helper != 255) { deck.random_helper = deck.random_helper + 1; }
+        else { deck.random_helper = 0; };
+        
+        vector::push_back(&mut seed, deck.random_helper);
+
+        let hashed = hash::sha2_256(seed);
         let card_number = vector::pop_back(&mut hashed);
         card_number = card_number % 36;
         card_number = card_number + 1;
@@ -515,11 +520,12 @@ module local::game_objects {
             card: vector::empty<Card>(),
             amount: 7,
             state,
+            random_helper: 0,
         };
 
         // Creation of random cards and given to the deck.
         while( i < 7 ) {
-            let random_card = generate_random_card(&deck, ctx);
+            let random_card = generate_random_card(&mut deck, ctx);
             vector::push_back(&mut deck.card, random_card)
         };
 
@@ -549,10 +555,11 @@ module local::game_objects {
             card: vector::empty<Card>(),
             amount: 7,
             state,
+            random_helper: 0,
         };
 
         while( i < 7 ) {
-            let random_card = generate_random_card(&deck, test_scenario::ctx(&mut scenario));
+            let random_card = generate_random_card(&mut deck, test_scenario::ctx(&mut scenario));
             vector::push_back(&mut deck.card, random_card);
             i = i + 1;
         };
