@@ -172,7 +172,7 @@ module local::game_objects {
         vec_map::insert(&mut get_moves(&mut game), tx_context::sender(ctx), vector::empty<Card>());
 
         // Adds the player to the list of players.
-        add_player(&game, tx_context::sender(ctx), ctx);
+        add_player(&mut game, tx_context::sender(ctx), ctx);
 
         // Shares the new game.
         transfer::share_object(game);
@@ -212,13 +212,14 @@ module local::game_objects {
     /// @param new_player (address) is the new player's address.
     /// @param ctx (TxContext) is used to give a new UID (unique identifier) to the new deck.
     /// @dev TODO: is it right to use ctx to create an the deck's id?
-    public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxContext) {
-    let all_players = get_players(game);
-    let new_moves = get_moves(game);
+    public(friend) fun add_player(game: &mut Game, new_player: address, ctx: &mut TxContext) {
+    let all_players = &mut get_players(game);
+    vector::push_back<address>(all_players, new_player);
+
+    let new_moves = &mut get_moves(game);
+    vec_map::insert(new_moves, new_player, vector::empty<Card>());
 
     transfer::transfer(new_deck(game, ctx), new_player);
-    vector::push_back(&mut all_players, new_player);
-    vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
 }
 
     /// @notice A new deck is created with all available attributes. Exactly 7 random cards 
@@ -567,6 +568,60 @@ module local::game_objects {
         assert!(!vector::is_empty(&deck.card), 1000);
 
         transfer::transfer(deck, test_scenario::sender(&mut scenario));
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_new_player() {
+        use sui::test_scenario; 
+        use sui::transfer;
+
+        let player_one = @0x1;
+        let player_two = @0x2;
+        let player_three = @0x3;
+        let player_four = @0x4;
+        let scenario = test_scenario::begin(player_one);
+
+        let game = new_game(2, test_scenario::ctx(&mut scenario));
+
+        let all_players = &mut get_players(&game);
+
+        vector::push_back<address>(all_players, player_two);
+
+        let vec = vector::empty<u8>();
+        vector::push_back<u8>(&mut vec, 1);
+
+        assert!(vector::length(&vec) == 1, 10000000);
+        assert!(vector::length(all_players) == 2, 1001000);
+
+        vector::push_back<address>(all_players, player_three);
+
+        assert!(vector::length(all_players) == 3, 1001000);
+
+        test_scenario::next_tx(&mut scenario, player_four);
+            add_player(&mut game, player_four, test_scenario::ctx(&mut scenario));
+            let all_players = &mut get_players(&game);
+            assert!(vector::length(all_players) == 1, 1001000);
+
+            let all_players = &mut get_players(&game);
+            assert!(vector::length(all_players) == 1, 1001000);
+            vector::push_back<address>(all_players, player_four);
+            
+            // Why 2?
+            assert!(vector::length(all_players) == 2, 1001000);
+            vector::push_back<address>(all_players, player_one);
+            assert!(vector::length(all_players) == 3, 1001000);
+
+        test_scenario::next_tx(&mut scenario, player_one);
+            let all_players = &mut get_players(&game);
+            assert!(vector::length(all_players) == 1, 1001000);
+
+        test_scenario::next_tx(&mut scenario, player_four);
+            let all_players = &mut get_players(&game);
+            assert!(vector::length(all_players) == 1, 1001000);
+
+        transfer::share_object(game);
 
         test_scenario::end(scenario);
     }
