@@ -104,7 +104,7 @@ module local::uno {
     /// @param game (Game) shared between players.
     /// @param new_player (address) is the address the user that will enter the game.
     /// @param ctx (TxContext) is the context of the transaction. Will later be used to pass address.
-    public entry fun enter_new_player(game: &Game, new_player: address, ctx: &mut TxContext) {
+    public entry fun enter_new_player(game: &mut Game, new_player: address, ctx: &mut TxContext) {
         assert!(vector::length(&game_objects::get_players(game)) < game_objects::get_max_number_of_players(game),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
         game_objects::add_player(game, new_player, ctx);
@@ -255,10 +255,11 @@ module local::uno {
         test_scenario::next_tx(&mut scenario, second_player);
         
            let game = test_scenario::take_shared<Game>(&mut scenario);
-           enter_new_player(&game, second_player, test_scenario::ctx(&mut scenario));
+           enter_new_player(&mut game, second_player, test_scenario::ctx(&mut scenario));
 
         test_scenario::next_tx(&mut scenario, assistant_address);
 
+           assert!(game_objects::get_number_of_players(&game) == 2, 10000);
             let deck = test_scenario::take_from_address<Deck>(&mut scenario, second_player);
 
         test_scenario::next_tx(&mut scenario, second_player);
