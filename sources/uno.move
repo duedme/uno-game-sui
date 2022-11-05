@@ -20,6 +20,7 @@ module local::uno {
     use local::game_objects::{Self, Game, Deck, Card};
     use local::colors::Color;
     use std::vector;
+    use std::option;
     use sui::tx_context::TxContext;
     use sui::vec_map::VecMap;
 
@@ -62,7 +63,7 @@ module local::uno {
     /// @notice Gives the player a list of all cards already used in the game.
     /// @param game (Game) shared between players.
     public entry fun know_last_card_used_in_game(game: &Game) {
-        game_objects::emit_object<Card>(game_objects::get_last_used_card(game));
+        game_objects::emit_object<Card>(option::extract<Card>(&mut game_objects::get_last_used_card(game)));
     }
 
     /// @notice Gives a list of the player's cards.
@@ -103,7 +104,7 @@ module local::uno {
     /// @param game (Game) shared between players.
     /// @param new_player (address) is the address the user that will enter the game.
     /// @param ctx (TxContext) is the context of the transaction. Will later be used to pass address.
-    public entry fun enter_new_player(game: &Game, new_player: address, ctx: &mut TxContext) {
+    public entry fun enter_new_player(game: &mut Game, new_player: address, ctx: &mut TxContext) {
         assert!(vector::length(&game_objects::get_players(game)) < game_objects::get_max_number_of_players(game),
             (EMAX_NUMBER_OF_PLAYERS_REACHED as u64));
         game_objects::add_player(game, new_player, ctx);
@@ -148,7 +149,7 @@ module local::uno {
     public fun check_cards(game: &Game, deck: &mut Deck, ctx: &mut TxContext): (bool, u64) {
         assert!(game_objects::get_state(deck) == false, (ECARD_ALREADY_CHECKED as u64));
 
-        let last_card_in_place = &game_objects::get_last_used_card(game);
+        let option_last_card_in_place = &game_objects::get_last_used_card(game);
         let pack_of_cards: &vector<Card> = &game_objects::get_cards_in_deck(deck);
         let color_pack: vector<Color> = vector::empty<Color>();
         let number_pack: vector<u8> = vector::empty<u8>();
@@ -162,22 +163,26 @@ module local::uno {
             i = i + 1;
         };
 
-        (_check, i) = vector::index_of<Color>(&color_pack, &game_objects::get_color(last_card_in_place));
-        if (_check == true) {
-            game_objects::update_state(deck, true);
-            game_objects::emit_object<vector<Card>>(*pack_of_cards);
-            return (_check, i)
-        };
+        if(option::is_some(option_last_card_in_place)) {
+            let last_card_in_place = option::borrow<Card>(option_last_card_in_place);
 
-        (_check, i) = vector::index_of<u8>(&number_pack, &game_objects::get_number(last_card_in_place));
-        if (_check == true) {
-            game_objects::update_state(deck, true);
-            game_objects::emit_object<vector<Card>>(*pack_of_cards);
-            return (_check, i)
-        };
+            (_check, i) = vector::index_of<Color>(&color_pack, &game_objects::get_color(last_card_in_place));
+            if (_check == true) {
+                game_objects::update_state(deck, true);
+                game_objects::emit_object<vector<Card>>(*pack_of_cards);
+                return (_check, i)
+            };
 
-        // Since player has no matching cards, he will be given a new random one.
-        game_objects::add_new_card_to_deck(deck, ctx);
+            (_check, i) = vector::index_of<u8>(&number_pack, &game_objects::get_number(last_card_in_place));
+            if (_check == true) {
+                game_objects::update_state(deck, true);
+                game_objects::emit_object<vector<Card>>(*pack_of_cards);
+                return (_check, i)
+            };
+
+            // Since player has no matching cards, he will be given a new random one.
+            game_objects::add_new_card_to_deck(deck, ctx);
+        };
 
         (_check, i)
     }
@@ -202,7 +207,7 @@ module local::uno {
 
         // Finds and deletes the used card of player's current deck
         let last_card_in_deck = game_objects::get_last_used_card(game);
-        let (_, i) = vector::index_of(&cards_in_deck, &last_card_in_deck);
+        let (_, i) = vector::index_of(&cards_in_deck, option::borrow<Card>(&last_card_in_deck));
         vector::remove(&mut cards_in_deck, i);
 
         game_objects::emit_object<vector<Card>>(game_objects::get_cards_in_deck(deck));
@@ -241,16 +246,28 @@ module local::uno {
 
         let first_player = @0xABC;
         let second_player = @0x123;
+        let assistant_address = @0x1;
 
         let scenario = test_scenario::begin(first_player);
 
         new_game(2, test_scenario::ctx(&mut scenario));
 
         test_scenario::next_tx(&mut scenario, second_player);
-        {
-            let game = test_scenario::take_shared<Game>(&mut scenario);
-            enter_new_player(&game, second_player, test_scenario::ctx(&mut scenario));
-        };
+        
+           let game = test_scenario::take_shared<Game>(&mut scenario);
+           enter_new_player(&mut game, second_player, test_scenario::ctx(&mut scenario));
+
+        test_scenario::next_tx(&mut scenario, assistant_address);
+
+           assert!(game_objects::get_number_of_players(&game) == 2, 10000);
+            let deck = test_scenario::take_from_address<Deck>(&mut scenario, second_player);
+
+        test_scenario::next_tx(&mut scenario, second_player);
+
+            check_cards(&game, &mut deck, test_scenario::ctx(&mut scenario));
+
+            test_scenario::return_shared<Game>(game);
+            test_scenario::return_to_sender<Deck>(&scenario, deck);
 
         test_scenario::end(scenario);
     }

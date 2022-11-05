@@ -12,6 +12,7 @@ module local::game_objects {
     use std::ascii::{Self, String};
     use std::vector;
     use std::hash;
+    use std::option::{Self, Option};
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::vec_map::{Self, VecMap};
@@ -71,6 +72,8 @@ module local::game_objects {
         /// Map matching the string "Checked" with a bool statement indicating whether the
         /// player has a card available.
         state: VecMap<String, bool>,
+        /// Parameter that will help make things more random while creating cards.
+        random_helper: u8,
         //special_cards: bool
     }
 
@@ -164,14 +167,13 @@ module local::game_objects {
 
         // Calls a special method to create a new game.
         let game = new_game(number_of_players, ctx);
-        // Calls a special method to create a new deck of cards.
-        let deck = new_deck(&game, ctx);
 
         // Initializes a map of cards linked to the sender's address.
         vec_map::insert(&mut get_moves(&mut game), tx_context::sender(ctx), vector::empty<Card>());
 
-        // Gives signer ownership of the new deck.
-        transfer::transfer(deck, tx_context::sender(ctx));
+        // Adds the player to the list of players.
+        add_player(&mut game, tx_context::sender(ctx), ctx);
+
         // Shares the new game.
         transfer::share_object(game);
     }
@@ -210,13 +212,14 @@ module local::game_objects {
     /// @param new_player (address) is the new player's address.
     /// @param ctx (TxContext) is used to give a new UID (unique identifier) to the new deck.
     /// @dev TODO: is it right to use ctx to create an the deck's id?
-    public(friend) fun add_player(game: &Game, new_player: address, ctx: &mut TxContext) {
-    let all_players = get_players(game);
-    let new_moves = get_moves(game);
+    public(friend) fun add_player(game: &mut Game, new_player: address, ctx: &mut TxContext) {
+    let all_players = &mut get_players(game);
+    vector::push_back<address>(all_players, new_player);
+
+    let new_moves = &mut get_moves(game);
+    vec_map::insert(new_moves, new_player, vector::empty<Card>());
 
     transfer::transfer(new_deck(game, ctx), new_player);
-    vector::push_back(&mut all_players, new_player);
-    vec_map::insert(&mut new_moves, new_player, vector::empty<Card>());
 }
 
     /// @notice A new deck is created with all available attributes. Exactly 7 random cards 
@@ -238,11 +241,12 @@ module local::game_objects {
             card: vector::empty<Card>(),
             amount: 7,
             state,
+            random_helper: 0,
         };
 
         // Creation of random cards and given to the deck.
         while( i < 7 ) {
-            let random_card = generate_random_card(&deck, ctx);
+            let random_card = generate_random_card(&mut deck, ctx);
             vector::push_back(&mut deck.card, random_card);
             i = i + 1;
         };
@@ -255,7 +259,7 @@ module local::game_objects {
     ///     It is usually used when the player cannot play more cards than he owns.
     /// @param deck (Deck) is the owned object to which the new card is added to.
     /// @param ctx (TxContext) is the context of the transaction.
-    public(friend) fun add_new_card_to_deck(deck: &Deck, ctx: &mut TxContext) {
+    public(friend) fun add_new_card_to_deck(deck: &mut Deck, ctx: &mut TxContext) {
         vector::push_back(&mut get_cards_in_deck(deck)
             , generate_random_card(deck, ctx));
     }
@@ -264,8 +268,15 @@ module local::game_objects {
     /// @param deck (Deck) is the object owned by the player. Used to obtain a hash with pseudo-random numbers.
     /// @param _ctx (TxContext) is the context of the transaction.
     /// @return Card object appended to the a given deck.
-    fun generate_random_card(deck: &Deck, _ctx: &mut TxContext): Card {
-        let hashed = hash::sha2_256(object::id_bytes(deck));
+    fun generate_random_card(deck: &mut Deck, _ctx: &mut TxContext): Card {
+        let seed = object::id_bytes(deck);
+        
+        if(deck.random_helper != 255) { deck.random_helper = deck.random_helper + 1; }
+        else { deck.random_helper = 0; };
+        
+        vector::push_back(&mut seed, deck.random_helper);
+
+        let hashed = hash::sha2_256(seed);
         let card_number = vector::pop_back(&mut hashed);
         card_number = card_number % 36;
         card_number = card_number + 1;
@@ -382,11 +393,18 @@ module local::game_objects {
 
     /// @notice Get the last card used in the game.
     /// @param game (Game) shared between players.
-    /// @return Card
-    public(friend) fun get_last_used_card(game: &Game): Card {
+    /// @return Option<Card>. It is a Card that may or may not be present.
+    public(friend) fun get_last_used_card(game: &Game): Option<Card> {
         let used_cards = get_all_used_cards(game);
-        let number_of_used_cards = vector::length<Card>(&used_cards) - 1;
-        *vector::borrow<Card>(&mut used_cards, number_of_used_cards)
+        let number_of_used_cards = vector::length<Card>(&used_cards);
+
+        if(number_of_used_cards == 0) { option::none<Card>() }
+        else {
+            number_of_used_cards = number_of_used_cards - 1;
+            option::some<Card>(
+                *vector::borrow<Card>(&mut used_cards, number_of_used_cards)
+            )
+        }
     }
 
     public(friend) fun get_won(game: &Game): bool {
@@ -503,11 +521,12 @@ module local::game_objects {
             card: vector::empty<Card>(),
             amount: 7,
             state,
+            random_helper: 0,
         };
 
         // Creation of random cards and given to the deck.
         while( i < 7 ) {
-            let random_card = generate_random_card(&deck, ctx);
+            let random_card = generate_random_card(&mut deck, ctx);
             vector::push_back(&mut deck.card, random_card)
         };
 
@@ -537,10 +556,11 @@ module local::game_objects {
             card: vector::empty<Card>(),
             amount: 7,
             state,
+            random_helper: 0,
         };
 
         while( i < 7 ) {
-            let random_card = generate_random_card(&deck, test_scenario::ctx(&mut scenario));
+            let random_card = generate_random_card(&mut deck, test_scenario::ctx(&mut scenario));
             vector::push_back(&mut deck.card, random_card);
             i = i + 1;
         };
@@ -548,6 +568,60 @@ module local::game_objects {
         assert!(!vector::is_empty(&deck.card), 1000);
 
         transfer::transfer(deck, test_scenario::sender(&mut scenario));
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_new_player() {
+        use sui::test_scenario; 
+        use sui::transfer;
+
+        let player_one = @0x1;
+        let player_two = @0x2;
+        let player_three = @0x3;
+        let player_four = @0x4;
+        let scenario = test_scenario::begin(player_one);
+
+        let game = new_game(2, test_scenario::ctx(&mut scenario));
+
+        let all_players = &mut get_players(&game);
+
+        vector::push_back<address>(all_players, player_two);
+
+        let vec = vector::empty<u8>();
+        vector::push_back<u8>(&mut vec, 1);
+
+        assert!(vector::length(&vec) == 1, 10000000);
+        assert!(vector::length(all_players) == 2, 1001000);
+
+        vector::push_back<address>(all_players, player_three);
+
+        assert!(vector::length(all_players) == 3, 1001000);
+
+        test_scenario::next_tx(&mut scenario, player_four);
+            add_player(&mut game, player_four, test_scenario::ctx(&mut scenario));
+            let all_players = &mut get_players(&game);
+            assert!(vector::length(all_players) == 1, 1001000);
+
+            let all_players = &mut get_players(&game);
+            assert!(vector::length(all_players) == 1, 1001000);
+            vector::push_back<address>(all_players, player_four);
+            
+            // Why 2?
+            assert!(vector::length(all_players) == 2, 1001000);
+            vector::push_back<address>(all_players, player_one);
+            assert!(vector::length(all_players) == 3, 1001000);
+
+        test_scenario::next_tx(&mut scenario, player_one);
+            let all_players = &mut get_players(&game);
+            assert!(vector::length(all_players) == 1, 1001000);
+
+        test_scenario::next_tx(&mut scenario, player_four);
+            let all_players = &mut get_players(&game);
+            assert!(vector::length(all_players) == 1, 1001000);
+
+        transfer::share_object(game);
 
         test_scenario::end(scenario);
     }
