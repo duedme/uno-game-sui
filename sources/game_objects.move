@@ -100,20 +100,21 @@ module local::game_objects {
     public(friend) fun check_participation(game: &Game, ctx: &mut TxContext) {
         let game_rounds = get_rounds(game);
         let round_number = (vec_map::size(&game_rounds) as u8);
+        let participations = vec_map::get(&mut game_rounds, &round_number);
 
         // Saves the player's address in different treatment depending on the number of rounds.
         if(vec_map::is_empty<u8, vector<address>>(&game_rounds)) {
             vec_map::insert(&mut game_rounds, 1, vector::singleton(tx_context::sender(ctx)));
+
+        // If all players have participated, game goes to the next round.
+        } else if(vector::length(participations) == vector::length(&get_players(game))) {
+            vec_map::insert(&mut game_rounds, round_number + 1, vector::empty<address>());
+
+        // If the game is in the middle of a round, just push the player to the list.
         } else {
             let addresses = vec_map::get_mut(&mut game_rounds, &round_number);
             vector::push_back(addresses, tx_context::sender(ctx));
         };
-
-        // If all players have participated, game goes to the next round.
-        let participations = vec_map::get(&mut game_rounds, &round_number);
-        if(vector::length(participations) == vector::length(&get_players(game))) {
-            vec_map::insert(&mut game_rounds, round_number + 1, vector::empty<address>());
-        }
     }
 
     /// @notice Tells a player he has won the game.
