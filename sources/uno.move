@@ -49,7 +49,7 @@ module local::uno {
     }
 
     /// @notice Gives the player a list of all the moves that have been made.
-    /// @param game (Game)shared between players.
+    /// @param game (Game) shared between players.
     public entry fun know_all_moves(game: &Game) {
         game_objects::emit_object<VecMap<address, vector<Card>>>(game_objects::get_moves(game));
     }
@@ -60,7 +60,7 @@ module local::uno {
         game_objects::emit_object<vector<Card>>(game_objects::get_all_used_cards(game));
     }
 
-    /// @notice Gives the player a list of all cards already used in the game.
+    /// @notice Gives the player knowledge of the last card used in the game.
     /// @param game (Game) shared between players.
     public entry fun know_last_card_used_in_game(game: &Game) {
         game_objects::emit_object<Card>(option::extract<Card>(&mut game_objects::get_last_used_card(game)));
@@ -84,6 +84,8 @@ module local::uno {
 
     }
 
+    /// @notice Freezes the game object. Only available when the game has been won or no players are in.
+    /// @param game (Game) shared between players.
     public entry fun freeze_game(game: Game) {
         assert!(
             vector::is_empty(&game_objects::get_players(&game)) || game_objects::get_won(&game),
@@ -92,6 +94,8 @@ module local::uno {
         game_objects::freeze_game(game);
     }
 
+    /// @notice Deletes the game object. Only available when the game has been won or no players are in.
+    /// @param game (Game) shared between players.
     public entry fun delete_game(game: Game) {
         assert!(
             vector::is_empty(&game_objects::get_players(&game)) || game_objects::get_won(&game),
